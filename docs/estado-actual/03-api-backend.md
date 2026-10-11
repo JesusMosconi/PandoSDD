@@ -16,8 +16,8 @@ Todas las rutas siguientes llevan prefijo `/api` por `backend/src/index.js`. En 
 | `colecciones.routes.js` | GET `/colecciones`, GET `/colecciones/:id` | P | 404 si falta id |
 | | POST `/colecciones`, PUT `/colecciones/:id`, DELETE `/colecciones/:id` | A | Usa `nombre`, `imagenUrl`, `fechaLanzamiento`, `numeroDrop`, `contadorActivo`; sin `validateBody` |
 | | POST/DELETE `/colecciones/:id/imagen` | A | POST requiere archivo `imagen`; 404/400 |
-| `productos.routes.js` | GET `/productos` | P; A si `admin=true` | Filtra `categoriaId`, `coleccionId`, `web=true`, `talle` con stock y `orden`; sin admin excluye inactivos |
-| | GET `/productos/:id` | P | Busca por id; 404 si falta |
+| `productos.routes.js` | GET `/productos` | P; A si `admin=true` | Filtra `categoriaId`, `coleccionId`, `talle` con stock y `orden`; sin admin exige `activo=true` y `web=true`; con admin conserva acceso a inactivos y filtro opcional `web=true` |
+| | GET `/productos/:id` | P | Exige `activo=true` y `web=true`, incluye variantes con stock positivo; 404 `Producto no encontrado` si falta o no es visible |
 | | POST `/productos`, PUT `/productos/:id` | A | V: `nombre`, `precio`, `categoriaId`; opcionales `descripcion`, `activo`, `web`, `coleccionId` |
 | | DELETE `/productos/:id` | A | Actualiza `activo=false` |
 | `talle-producto.routes.js` | GET `/talle-producto` | P | Filtro opcional `productoId` |
@@ -28,7 +28,7 @@ Todas las rutas siguientes llevan prefijo `/api` por `backend/src/index.js`. En 
 | | POST `/img-producto` | A | V: `url`, `orden`, `productoId` |
 | | PUT `/img-producto/:id` | A | V: `url`, `orden` |
 | | DELETE `/img-producto/:id` | A | Borrado de fila |
-| `catalogo-inicio.routes.js` | GET `/catalogo-inicio`, GET `/catalogo-inicio/:id` | P | Incluye producto, imagen y talles con stock; 404 por id ausente |
+| `catalogo-inicio.routes.js` | GET `/catalogo-inicio`, GET `/catalogo-inicio/:id` | P | Incluye solo selecciones de productos con `activo=true` y `web=true`, imagen y talles con stock; 404 por id ausente o producto no visible |
 | | POST `/catalogo-inicio`, PUT `/catalogo-inicio/:id` | A | V: `orden`, `productoId` Number |
 | | DELETE `/catalogo-inicio/:id` | A | Borrado de fila |
 | `contenido-inicio.routes.js` | GET `/contenido-inicio`, GET `/contenido-inicio/:id` | P | 404 por id ausente |
@@ -44,9 +44,9 @@ Todas las rutas siguientes llevan prefijo `/api` por `backend/src/index.js`. En 
 | | GET/PUT `/usuarios/perfil`, PUT `/usuarios/cambiar-password` | U | Perfil y cambio de contraseña; validaciones manuales |
 | | GET `/admin/usuarios`, GET `/admin/usuarios/:id` | A | Filtros/paginación; valida `rol` e id en detalle |
 | | PATCH `/admin/usuarios/:id/estado`, PUT `/admin/usuarios/:id/rol` | A | Valida id, estado/rol; impide autodesactivación/quitarse admin |
-| `carrito.routes.js` | GET `/carrito`, DELETE `/carrito` | U | Obtiene/crea carrito activo; DELETE vacía ítems |
-| | POST `/carrito/items` | U | V: `talleProductoId`, `cantidad`; enteros positivos, variante disponible y stock |
-| | PUT `/carrito/items/:id` | U | V: `cantidad`; dueño del ítem, entero positivo y stock |
-| | DELETE `/carrito/items/:id` | U | Exige pertenencia del ítem al usuario |
+| `carrito.routes.js` | GET `/carrito`, DELETE `/carrito` | U | Obtiene/crea carrito activo; DELETE vacía ítems; ambas respuestas incluyen `disponible` por ítem |
+| | POST `/carrito/items` | U | V: `talleProductoId`, `cantidad`; enteros positivos, variante activa, producto visible y stock; rechaza antes de crear carrito; respuesta incluye `disponible` |
+| | PUT `/carrito/items/:id` | U | V: `cantidad`; dueño del ítem, entero positivo y stock; rechaza aumento si el producto no es visible y permite reducción sujeta a validaciones previas; respuesta incluye `disponible` |
+| | DELETE `/carrito/items/:id` | U | Exige pertenencia del ítem al usuario; respuesta incluye `disponible` por ítem restante |
 
 `asyncHandler` entrega rechazos al middleware de error. El manejador global responde 400 para errores Multer/formato y JSON inválido, y 500 genérico para el resto; varios handlers de `usuarios.routes.js` capturan sus errores localmente. Fuentes: `backend/src/utils/async-handler.js`, `backend/src/index.js`, `backend/src/routes/usuarios.routes.js`.
