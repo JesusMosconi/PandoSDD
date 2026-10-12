@@ -1,0 +1,142 @@
+# Tasks: Checkout y órdenes de PandoCBA
+
+**Input**: `specs/002-checkout-ordenes/spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/checkout-ordenes.md` y `quickstart.md`.
+
+**Organization**: fases por historia de usuario. Cada ruta indica el repositorio correspondiente: raíz para `specs/` y `docs/`, `backend/` para API y Prisma, `frontend/` para Next. Completar una tarea por vez y preservar cambios ajenos. **Cierre de cada tarea**: si modifica `frontend/`, ejecutar `npm.cmd run lint` y `npm.cmd run build` desde ese repo antes de marcarla; si modifica `backend/`, declarar que no existen scripts de lint/build; ejecutar `git diff --check` en cada repo afectado y anotar resultado o impedimento en `specs/002-checkout-ordenes/verificacion.md`. La verificación final no sustituye estas comprobaciones por tarea.
+
+**Tests**: la spec no solicita TDD. Según `plan.md`, agregar pruebas dirigidas con `node:test` para checkout, autorización, órdenes cliente/admin y vencimiento, sin dependencias nuevas y solo después de verificar la versión de Node y una base aislada. Registrar también recorridos y resultados en `specs/002-checkout-ordenes/verificacion.md`.
+
+## Phase 1: Setup
+
+**Purpose**: despejar requisitos de trabajo seguro antes de cambiar código o esquema.
+
+- [X] T001 Verificar `git status --short --branch` por separado en raíz, `backend/` y `frontend/`; resolver ramas de feature `002-checkout-ordenes` sin perder archivos no rastreados y registrar ramas efectivas en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+- [X] T002 Revisar `AGENTS.md`, `backend/AGENTS.md` y `backend/CLAUDE.md` si existen, `frontend/AGENTS.md`, `frontend/CLAUDE.md`, `.specify/memory/constitution.md` y `docs/estado-actual/08-deuda-y-riesgos.md`; registrar límites aplicables en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+- [X] T003 Verificar por medio autorizado, sin leer `.env` ni imprimir credenciales, host y rama de base de prueba aislada, estado de migraciones, versión de Node y programador disponible; registrar resultados y pendientes en `specs/002-checkout-ordenes/verificacion.md` (raíz). Ninguna migración, seed o escritura externa queda autorizada por esta tarea.
+- [X] T004 Obtener revisión explícita del diseño de esquema, precios, reservas y autorización de `specs/002-checkout-ordenes/plan.md` y `specs/002-checkout-ordenes/data-model.md` antes de modificar `backend/prisma/schema.prisma` o las reglas correspondientes; anotar decisión en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+
+---
+
+## Phase 2: Foundational
+
+**Purpose**: esquema y disponibilidad efectiva compartidos por las cuatro historias. Depende de Phase 1.
+
+- [X] T005 Revisar en `specs/002-checkout-ordenes/data-model.md` y `backend/prisma/schema.prisma` la compatibilidad de órdenes heredadas, restricciones e índices; registrar la propuesta exacta de esquema y migración en `specs/002-checkout-ordenes/verificacion.md` (raíz), sin modificar todavía el esquema.
+- [X] T006 Modificar juntos `backend/prisma/schema.prisma` y la migración versionada nueva `backend/prisma/migrations/20261011_checkout_ordenes/migration.sql`: conservar `Orden.carritoId` único, `subtotal` Decimal ya existente y filas heredadas; cambiar `total` y `costoEnvio` a nullable sin default cero para nuevas órdenes de envío, agregar `creadaEn`/`venceEn` y clave/huella nullable, unicidad `(usuarioId, claveConfirmacion)`, pago/cancelación/constancia opcionales, y `DetalleOrden`, `ReservaStock`, `EventoOrden` con relaciones, índices y unicidad `(ordenId, talleProductoId)`. No editar migraciones aplicadas ni reinterpretar datos heredados; actualizar `docs/estado-actual/02-modelo-de-datos.md` (raíz) en la misma tarea. Aplicar la migración solo con destino aislado verificado y autorización específica.
+- [X] T007 Implementar en `backend/src/services/inventario.js` disponibilidad `max(0, TalleProducto.stock - reservas efectivas)` usando hora de BD: una `activa` pendiente cuenta solo antes de `venceEn`; las activas pagadas cuentan hasta consumo. Incluir bloqueos de variantes en orden estable y transiciones únicas `activa → liberada/consumida` con `cantidad > 0`, sin borrar reservas. Implementar en `backend/src/services/ordenes.js` la transición compartida de vencimiento: solo `pendiente_pago` con hora BD `>= venceEn`, bloqueo de orden/variantes, estado `cancelada_vencimiento`, liberación y evento únicos, `venceEn` original y `canceladaEn` real; derivar `estadoVisible=reserva_vencida_en_proceso` y `puedeCancelar=false` para consultas anteriores al barrido. Actualizar `docs/estado-actual/06-flujos-de-negocio.md` (raíz) en la misma tarea.
+- [X] T008 Actualizar `backend/src/routes/productos.routes.js`, `backend/src/routes/catalogo-inicio.routes.js` y `backend/src/routes/talle-producto.routes.js` para exponer y filtrar por disponibilidad efectiva en catálogo/detalle, mostrar existencias físicas y disponibles en administración y rechazar bajo bloqueo ajustes de stock físico inferiores a compromisos efectivos, incluido DELETE que fija stock en cero. En los POST/PUT de las tres rutas modificadas aplicar `validateBody`, construir explícitamente los campos permitidos para Prisma y eliminar `data: req.body`; no aceptar campos de reserva enviados por cliente. Actualizar `docs/estado-actual/03-api-backend.md` y `docs/estado-actual/06-flujos-de-negocio.md` (raíz) en la misma tarea.
+- [X] T009 Actualizar `backend/src/routes/carrito.routes.js` para usar disponibilidad efectiva, serializar ediciones del carrito frente a su conversión y exigir `estado=activo` dentro de la transacción; conservar ítems indisponibles para corrección. Actualizar `docs/estado-actual/03-api-backend.md` y `docs/estado-actual/06-flujos-de-negocio.md` (raíz) en la misma tarea.
+- [X] T010 Definir los tipos de respuestas y errores del contrato, importes decimales como cadenas, fechas UTC, `estadoCostoEnvio` y `estadoVisible` en `frontend/src/types/orden.ts`; agregar `stockDisponible` a `frontend/src/types/talle-producto.ts` y usarlo para disponibilidad pública en `frontend/src/components/ProductCard.tsx` y `frontend/src/components/ProductVariants.tsx`, sin reinterpretar `stock` físico de administración. Actualizar `docs/estado-actual/04-frontend.md` (raíz) en la misma tarea.
+
+**Checkpoint**: esquema y migración versionada preparados; disponibilidad y vencimiento oportunista compartidos. No empezar historias mientras falten T005–T010; T010 depende del contrato de disponibilidad de T008.
+
+---
+
+## Phase 3: User Story 1 — Confirmar compra (P1, MVP)
+
+**Goal**: desde `/carrito`, revisar entrega, precios y disponibilidad, aceptar el resumen vigente y crear una sola orden con reserva y detalle histórico.
+
+**Independent Test**: seguir escenarios 1–6, 11 y 12 de `quickstart.md`: retiro/envío, cinco campos, precios cambiados, ítems bloqueados, concurrencia y reintentos. Una confirmación válida crea exactamente una orden `pendiente_pago`; una inválida no crea ninguna.
+
+- [X] T011 [US1] Implementar normalización y validación de entrega en `backend/src/services/checkout.js`: retiro sin `DatosEnvio`; envío con dirección de 5–160 y ciudad de 2–80 caracteres visibles, sin controles; espacios recortados/colapsados; código postal alfanumérico de 4–10 caracteres sin espacios, al menos un dígito y en mayúsculas; teléfono con separadores permitidos, `+` solo inicial y 8–15 dígitos normalizados; email de hasta 254 caracteres, un `@`, partes no vacías, dominio con punto, sin espacios y en minúsculas. Identificar cada campo inválido en 400.
+- [X] T012 [US1] Implementar `POST /checkout/resumen` en `backend/src/services/checkout.js`: leer carrito activo del dueño, detectar carrito vacío/cantidad inválida/producto retirado o no publicado/variante inactiva/stock insuficiente/`ProductoImprovisado`; sumar cantidades de todas las líneas de una misma `talleProductoId` antes de comparar con stock disponible, marcar cada línea afectada por insuficiencia e informar todos los ítems y motivos sin borrarlos. Comparar `ItemCarrito.precioUnitario` con precio vigente, calcular subtotal con decimal del servidor y huella de cliente, carrito, líneas, entrega y datos normalizados; no reservar stock.
+- [X] T013 [US1] Implementar confirmación transaccional en `backend/src/services/checkout.js`: buscar primero `(usuarioId, claveConfirmacion)` y comparar la huella de la solicitud original; si coincide, devolver la misma orden sin revalidar el carrito ya convertido ni precios o stock actuales, y si difiere, responder 409. Solo para una creación nueva, exigir `aceptaPrecioVigente=true` y `huellaResumen` vigente, bloquear carrito y variantes en orden estable y revalidar las causas de T012: carrito vacío responde 400 sin orden; cantidad inválida, producto retirado/no publicado, variante inactiva, stock insuficiente y `ProductoImprovisado` responden 409 con todos los ítems y motivos, dejando el carrito editable. Sumar bajo los mismos bloqueos las cantidades de todas las líneas por `talleProductoId` y comparar esa suma con stock disponible antes de crear orden o reservas; si falta stock, identificar todas las líneas de esa variante. Recalcular precio y exigir nueva aceptación si cambió. En la misma transacción crear `Orden` `pendiente_pago` con `metodoPago="manual"` y subtotal decimal calculado por el servidor; crear cada `DetalleOrden` inmutable con posición, nombre de producto, talle, color, cantidad entera positiva, precio unitario vigente e importe de línea igual a cantidad × precio, con referencias históricas opcionales a producto/variante; exigir que la suma de líneas iguale el subtotal. Usar la cantidad agrupada ya validada para crear una sola `ReservaStock` activa por variante, con cantidad positiva, y crear `EventoOrden` inicial. Para `envio`, crear `DatosEnvio` con los cinco campos normalizados, `costoEnvio=null` y `total=null` (sin cotizar); para `retiro`, no crear `DatosEnvio`, usar `costoEnvio=null` (no aplicable) y `total=subtotal`. Convertir el carrito de `activo` a `convertido` en esa transacción. `creadaEn` proviene de un único instante de BD y `venceEn=creadaEn+120 horas`; reintento igual devuelve misma orden, intención distinta 409, conflicto transaccional agotado 503 sin orden parcial.
+- [X] T014 [US1] Crear `backend/src/middleware/es-cliente.js` para exigir rol vigente `cliente` desde la base; exponer `POST /api/checkout/resumen` y `POST /api/checkout/confirmacion` con `verificarToken`, `esCliente`, `asyncHandler` y validación de entrada en `backend/src/routes/checkout.routes.js`; registrar rutas en `backend/src/index.js`, con errores españoles 400/401/403/409/503, sin aceptar importes del navegador. Actualizar `docs/estado-actual/03-api-backend.md` y `docs/estado-actual/05-autenticacion-y-autorizacion.md` (raíz) en la misma tarea.
+- [X] T015 [US1] Preparar en `frontend/src/lib/api.ts` una función para BFF que haga `fetch` a URL absoluta de Express y devuelva el `Response` crudo, sin descartar cuerpo, código HTTP o `Content-Type`; mantener `apiFetchInterna` para navegador → BFF y ampliar `ApiError` para conservar `codigo`, `itemsAfectados` y `camposInvalidos`. Ajustar contratos decimales y errores en `frontend/src/types/orden.ts`. No exponer URL interna ni Bearer al navegador (frontend).
+- [X] T016 [P] [US1] Crear BFF autenticado y `no-store` para resumen en `frontend/src/app/api/checkout/resumen/route.ts`: obtener cookie con `obtenerTokenSesion`, reenviar a URL absoluta de Express mediante la función de T015 y devolver sin pérdida estado, cuerpo y `Content-Type`, incluidos `codigo`, `itemsAfectados` y `camposInvalidos`; nunca enviar JWT al navegador (frontend).
+- [X] T017 [P] [US1] Crear BFF autenticado y `no-store` para confirmación en `frontend/src/app/api/checkout/confirmacion/route.ts` usando la función de T015, con clave estable y cuerpo/estado preservados para 201/200/409/503; no pasar importes como autoridad ni exponer JWT (frontend).
+- [X] T018 [US1] Implementar en `frontend/src/components/CheckoutPanel.tsx` elección retiro/envío, cinco campos y mensajes por campo, resumen de precios anteriores/vigentes, checkbox de aceptación explícita, subtotal de productos y «Envío: costo a coordinar» con total final pendiente para envío (`null`), total=subtotal para retiro; bloquear confirmación ante ítems afectados sin borrarlos (frontend).
+- [X] T019 [US1] Añadir a `frontend/src/components/CheckoutPanel.tsx` clave estable por intento, botón deshabilitado durante envío, limpieza de aceptación ante `RESUMEN_CAMBIO` o reintento de resumen, foco y anuncios accesibles, carga y error con reintento tras 10 segundos conservando entrega; volver a consultar antes de permitir confirmar (frontend).
+- [X] T020 [US1] Crear `frontend/src/app/checkout/page.tsx` con protección de sesión y rol `cliente` vigente, `CheckoutPanel`, enlace de vuelta al carrito y confirmación con número/estado/vencimiento de orden (frontend).
+- [X] T021 [US1] Obtener el rol vigente en `frontend/src/app/carrito/page.tsx` mediante la sesión del servidor y pasarlo a `frontend/src/components/CarritoPanel.tsx`; mostrar el enlace `/checkout` solo para rol `cliente`, dejando corregibles los ítems bloqueados y deshabilitando avance del carrito vacío. El backend vuelve a comprobar el rol al confirmar. Actualizar `docs/estado-actual/04-frontend.md` y `docs/estado-actual/06-flujos-de-negocio.md` (raíz) en la misma tarea.
+- [X] T022 [US1] Crear pruebas dirigidas con `node:test` en `backend/test/checkout.test.js` para última unidad concurrente, dos líneas de la misma variante cuya suma supera el stock, doble clic/reintento, intención distinta, rol no cliente y revalidación final de ítems; agregar el script `test` en `backend/package.json` con comando Node verificado en T003, contra base aislada autorizada. Registrar en `specs/002-checkout-ordenes/verificacion.md` (raíz) comando y resultados, los restantes escenarios de US1 de `quickstart.md` y prueba de uso cronometrada: carrito válido confirmado sin asistencia en menos de 3 minutos, con comprensión del importe conocido y vencimiento (SC-006). No marcar completa sin evidencia de la medición.
+
+**Checkpoint**: US1 se puede recorrer y validar sin administración ni tarea programada.
+
+---
+
+## Phase 4: User Story 2 — Consultar y cancelar mis órdenes (P1)
+
+**Goal**: historial propio con detalle histórico y cancelación de pendiente estrictamente antes del vencimiento.
+
+**Independent Test**: escenarios 8–12 de `quickstart.md`: propietario ve/cancela su pendiente una vez; orden ajena devuelve 404; historial conserva snapshots; retraso/error muestra reintento sin «sin órdenes».
+
+- [X] T023 [US2] Implementar en `backend/src/services/ordenes.js` listado por `usuarioId` de más recientes a más antiguas y detalle por dueño, con snapshots de `DetalleOrden`, importes conocidos, `venceEn`, `estadoVisible` derivado de hora BD, `puedeCancelar` y constancia `envioCoordinado` con fecha cuando corresponda; órdenes heredadas sin campos nuevos no se reinterpretan (backend).
+- [X] T024 [US2] Implementar en `backend/src/services/ordenes.js` cancelación del dueño solo desde `pendiente_pago` con hora BD `< venceEn`, bajo transacción/bloqueo: `cancelada_cliente`, `activa → liberada` y un `EventoOrden`; reintento informa estado sin nuevo movimiento y, si venció, materializa `cancelada_vencimiento` y responde 409 (backend).
+- [X] T025 [US2] Exponer `GET /api/ordenes`, `GET /api/ordenes/:id` y `POST /api/ordenes/:id/cancelacion` en `backend/src/routes/ordenes.routes.js` con `verificarToken`, `esCliente` de T014, `asyncHandler`, validación de ID y 404 indistinguible para ajena/inexistente; registrar en `backend/src/index.js` y actualizar `docs/estado-actual/03-api-backend.md` y `docs/estado-actual/05-autenticacion-y-autorizacion.md` (raíz) en la misma tarea.
+- [X] T026 [P] [US2] Crear BFF `no-store` de listado propio en `frontend/src/app/api/ordenes/route.ts` y detalle en `frontend/src/app/api/ordenes/[id]/route.ts`, reutilizando la función cruda de T015; cookie httpOnly/Bearer solo entre servidores, cuerpo/estado de errores preservados (frontend).
+- [X] T027 [P] [US2] Crear BFF de cancelación en `frontend/src/app/api/ordenes/[id]/cancelacion/route.ts` reutilizando la función cruda de T015, propagando 409 y estado final sin reintentar una mutación con otra intención (frontend).
+- [X] T028 [US2] Añadir historial y detalle a `frontend/src/components/CuentaPanel.tsx` y `frontend/src/app/cuenta/page.tsx` para rol cliente: estados, snapshots, subtotal/costo sin cotizar, constancia visible de coordinación externa sin importe inventado, vencimiento, devolución pendiente si corresponde, confirmación accesible de cancelación, carga/error/reintento a los 10 segundos y actualización de pendiente abierta dentro de 60 segundos; actualizar `docs/estado-actual/04-frontend.md` (raíz) en la misma tarea.
+- [X] T029 [US2] Crear pruebas dirigidas con `node:test` en `backend/test/ordenes-cliente.test.js` para dueño/ajeno/inexistente, rol no cliente, cancelación, reintento, vencimiento simultáneo y snapshot histórico, contra base aislada autorizada; registrar en `specs/002-checkout-ordenes/verificacion.md` (raíz) comando/resultados y evidencia de fallo de historial y accesibilidad de US2.
+
+**Checkpoint**: US2 opera sobre las órdenes creadas por US1, sin esperar funciones administrativas.
+
+---
+
+## Phase 5: User Story 3 — Administrar órdenes (P1)
+
+**Goal**: administración consulta órdenes, confirma pago manual, avanza estados y cancela con trazabilidad y efectos de stock correctos.
+
+**Independent Test**: escenarios 2, 7–10 de `quickstart.md`: no admin recibe 403; pago antes del límite impide vencimiento; cada transición válida deja un evento; envío exige constancia; cancelación pagada exige motivo y decisión de stock.
+
+- [X] T030 [US3] Extender `backend/src/services/ordenes.js` con listado administrativo filtrable/paginado y detalle con `EventoOrden`, cliente, importes conocidos, `estadoVisible` y constancia externa; mantener `totalFinal=null` y `costoEnvio=null` para envío sin cotizar (backend).
+- [X] T031 [US3] Implementar pago manual en `backend/src/services/ordenes.js`: solo `pendiente_pago` con hora BD `< venceEn`, actor/fecha/importe acreditado=subtotal, transición atómica a `pago_confirmado` y reserva activa; al límite exacto materializar vencimiento y rechazar pago, incluso si la tarea no corrió; reintento sin evento duplicado (backend).
+- [X] T032 [US3] Implementar matriz de estados en `backend/src/services/ordenes.js`: `pago_confirmado → en_preparacion → lista_para_retiro → entregada` para retiro o `en_preparacion → enviada → entregada` para envío; exigir `envioCoordinado=true` con actor/fecha antes de `enviada`; consumir reserva y decrementar stock físico una vez en `enviada` o `entregada` de retiro; rechazar saltos e incompatibilidades (backend).
+- [X] T033 [US3] Implementar cancelación administrativa en `backend/src/services/ordenes.js`: exigir motivo también para una pendiente y permitirla solo con hora BD `< venceEn`, pasando a `cancelada_admin` y liberando cada reserva activa una sola vez sin decidir restitución ni mostrar devolución. Para una pagada antes de entrega, exigir motivo y `restituirStock` explícito: antes de consumo liberar reserva si restituye o consumir/decrementar físico si no; después de consumo incrementar físico una sola vez si restituye. Registrar estado, evento, actor, motivo y decisión aplicable atómicamente y mostrar `devolucion=pendiente_de_gestionar` solo si hubo pago, sin afirmar reembolso; reintento no duplica stock/evento (backend).
+- [X] T034 [US3] Exponer `GET /api/admin/ordenes`, `GET /api/admin/ordenes/:id`, `POST /api/admin/ordenes/:id/pago`, `PATCH /api/admin/ordenes/:id/estado` y `POST /api/admin/ordenes/:id/cancelacion` en `backend/src/routes/admin-ordenes.routes.js` con `verificarToken` y `esAdmin` vigentes, `asyncHandler` y validación de entrada; registrar en `backend/src/index.js` y actualizar `docs/estado-actual/03-api-backend.md` y `docs/estado-actual/05-autenticacion-y-autorizacion.md` (raíz) en la misma tarea.
+- [X] T035 [US3] Modificar `frontend/src/app/api/admin/[...ruta]/route.ts` para mapear solo el prefijo de navegador `/api/admin/ordenes` a Express `/api/admin/ordenes`, conservando las demás rutas existentes; responder JSON 401/403 en API según sesión/rol vigente, sin redirecciones de `exigirAdministrador` (mantener su uso en páginas). Reutilizar la función de reenvío BFF → Express de `frontend/src/lib/api.ts` creada en T015 en vez de llamar a `fetch` directamente desde la ruta; preservar cuerpos, métodos PATCH/POST, códigos, mensajes y `Content-Type` de órdenes sin exponer JWT. Verificar el mapeo y actualizar `docs/estado-actual/03-api-backend.md`, `docs/estado-actual/04-frontend.md` y `docs/estado-actual/05-autenticacion-y-autorizacion.md` (raíz) en la misma tarea.
+- [X] T036 [US3] Crear listado/detalle y acciones de pago, avance y cancelación en `frontend/src/components/AdminOrdenes.tsx` y `frontend/src/app/admin/ordenes/page.tsx`: mostrar subtotal acreditado, costo de envío sin cotizar, constancia externa, eventos, motivos, decisión de stock y devolución pendiente, con errores recuperables y bloqueo de acciones vencidas; enlazar desde `frontend/src/app/admin/page.tsx` y actualizar `docs/estado-actual/04-frontend.md` (raíz) en la misma tarea.
+- [X] T037 [US3] Crear pruebas dirigidas con `node:test` en `backend/test/ordenes-admin.test.js` para permisos, pago en T−ε/T exacto, envío sin/con constancia, saltos de estado, cancelaciones pagadas antes/después de consumo y reintentos sin stock/evento duplicado, contra base aislada autorizada; registrar comando/resultados y evidencia de interfaz en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+
+**Checkpoint**: administración gestiona órdenes sin pasarela ni cálculo de envío.
+
+---
+
+## Phase 6: User Story 4 — Vencer reservas impagas (P1)
+
+**Goal**: cancelar automáticamente pendientes al cumplirse 120 horas, aun con tarea tardía o repetida, sin competir incorrectamente con pagos.
+
+**Independent Test**: escenario 7 y 13 de `quickstart.md`: antes de `venceEn` no cancela; en `venceEn` ya no compromete stock ni acepta pago; corrida tardía produce una sola cancelación/evento/liberación; pago previo permanece pagado.
+
+- [X] T038 [US4] Implementar en `backend/src/services/ordenes.js` selección por lotes de pendientes con `venceEn <=` hora BD y reutilizar la transición compartida de T007; devolver resultados procesados, omitidos por carrera y fallidos sin duplicar evento o liberación (backend).
+- [X] T039 [US4] Crear `backend/src/jobs/vencer-ordenes.js` como comando finito por lotes, sin endpoint público: usar reloj BD, revalidar estado bajo bloqueo, continuar ante carreras, reportar procesadas/omitidas/fallidas/duración, terminar con error observable si quedan fallas y permitir reintento seguro (backend).
+- [X] T040 [US4] Definir en `backend/package.json` el comando para ejecutar `backend/src/jobs/vencer-ordenes.js`; documentar invocación manual segura, salida y recuperación en `docs/estado-actual/08-deuda-y-riesgos.md` (raíz), sin configurar todavía servicios externos.
+- [ ] T041 [US4] Configurar en GitHub Actions una invocación horaria de `backend/src/jobs/vencer-ordenes.js` contra la rama aislada `Prueba`, con secreto de conexión, ubicación concreta del workflow, operador, alertas y reintentos documentados en `docs/estado-actual/08-deuda-y-riesgos.md` y `specs/002-checkout-ordenes/verificacion.md`. El workflow programado debe quedar en la rama predeterminada y usar el código de `002-checkout-ordenes`; no declarar completa US4 hasta comprobar una corrida y el horario real. La vigencia de 120 horas no depende de la puntualidad del horario.
+- [X] T042 [US4] Actualizar `frontend/src/components/AdminOrdenes.tsx` para refrescar vistas administrativas pendientes abiertas como máximo cada 60 segundos con conexión, mostrar «Reserva vencida; cancelación en proceso» y luego cancelación definitiva con fecha real; mantener respuestas privadas `no-store`. La vista de cliente ya cumple este plazo por T028. Actualizar `docs/estado-actual/04-frontend.md` (raíz) en la misma tarea.
+- [X] T043 [US4] Crear pruebas dirigidas con `node:test` en `backend/test/vencimiento.test.js` para T−ε, T exacto, barrido tardío/repetido y carreras con pago/cancelación, contra base aislada autorizada; registrar comando/resultados y comprobaciones de disponibilidad, alerta y refresco de vista abierta en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+
+**Checkpoint**: vencimiento y visibilidad de la reserva funcionan aunque falle una corrida del programador.
+
+---
+
+## Final Phase: Polish & Cross-Cutting Concerns
+
+- [X] T044 Revisar contra `specs/002-checkout-ordenes/spec.md` FR-001–FR-024 y SC-001–SC-012, `contracts/checkout-ordenes.md`, `data-model.md` y ambos checklist en `specs/002-checkout-ordenes/checklists/`; registrar desvíos o decisiones pendientes en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+- [X] T045 Ejecutar `npm.cmd run lint` y `npm.cmd run build` desde `frontend/`, `git diff --check` por separado en raíz/backend/frontend, y anotar resultados en `specs/002-checkout-ordenes/verificacion.md` (raíz); declarar que `backend/package.json` no ofrece scripts de lint ni build. No ejecutar migraciones o seeds como parte de esta comprobación.
+- [X] T046 Revisar que `docs/estado-actual/04-frontend.md`, `02-modelo-de-datos.md`, `03-api-backend.md`, `05-autenticacion-y-autorizacion.md`, `06-flujos-de-negocio.md` y `08-deuda-y-riesgos.md` describan lo realmente implementado; registrar límites y comprobaciones pendientes en `specs/002-checkout-ordenes/verificacion.md` (raíz).
+
+---
+
+## Dependencies & Execution Order
+
+- **Setup → Foundational**: T001–T004 anteceden todo cambio. T005 revisa el esquema sin editarlo; T006 depende de T005 y se cierra solo con esquema y migración juntos; T007 depende de T006; T008–T009 dependen de T007. T010 depende de la respuesta de disponibilidad definida en T008. La migración no se aplica sin autorización para una base aislada.
+- **US1**: T011–T013 dependen de Foundation; T014 depende de T012–T013; T015 prepara el reenvío y errores antes de T016–T017, que pueden hacerse en paralelo entre sí; T018–T021 integran UI/BFF; T022 cierra la historia.
+- **US2**: depende de orden/reserva de US1 y de la transición compartida de T007. T023–T024 preceden T025; T026–T027 pueden prepararse en paralelo; T028 integra y T029 valida.
+- **US3**: depende de US1 y de la transición compartida de T007. T030–T033 preceden T034; T035 reutiliza la función de T015, puede preparar el proxy en paralelo con el servicio backend y se verifica contra T034 antes de T036; T036 integra y T037 valida.
+- **US4**: T038 reutiliza T007 y precede T039; T040 depende de T039; T041 depende de T003 y T040 y requiere entorno autorizado; T042 depende de las vistas de US2/US3 y del estado efectivo de T007; T043 valida después de T041–T042.
+- **Final**: T044–T046 después de las historias incluidas en la entrega. Los tres repositorios requieren comprobación y evidencia por separado.
+
+## Parallel Opportunities
+
+- **Foundation**: T008 y T009 tocan rutas distintas tras T007; T010 integra la disponibilidad pública una vez fijado el contrato por T008.
+- **US1**: T016 (BFF resumen) y T017 (BFF confirmación) tocan archivos distintos tras T015.
+- **US2**: T026 (BFF lectura) y T027 (BFF cancelación) tocan rutas distintas tras el contrato backend.
+- **US3**: T035 (adaptación del proxy existente) puede avanzar tras T015 mientras se implementan T030–T033; comprobar su mapeo contra T034 y coordinar cualquier edición de `docs/estado-actual/03-api-backend.md`.
+- **US4**: T042 (actualización de vistas) puede avanzar en paralelo con T038–T040 una vez que T007 y las vistas de US2/US3 estén completos; T041 espera la identificación del programador, el comando y la autorización.
+
+## Implementation Strategy
+
+1. Completar Setup y Foundation con ramas y base aislada verificadas. Una migración requiere autorización específica antes de aplicarse.
+2. Entregar primero US1 como MVP y validar sus escenarios sin considerar completo el vencimiento automático de la entrega total.
+3. Añadir US2, US3 y US4 en ese orden, validando cada historia con `quickstart.md` y registrando evidencia real.
+4. Cerrar con la revisión de requisitos, documentación actualizada en las tareas que cambian comportamiento y verificaciones disponibles. No hacer commit, push ni despliegue sin pedido explícito.
