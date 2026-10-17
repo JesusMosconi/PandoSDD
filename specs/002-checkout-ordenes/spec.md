@@ -69,7 +69,7 @@ Como administrador, quiero consultar órdenes, confirmar pagos manualmente y ges
 
 ### User Story 4 - Vencer reservas impagas (Priority: P1)
 
-Como negocio, quiero recuperar stock de órdenes impagas al vencer cinco días corridos exactos.
+Como negocio, quiero recuperar stock de órdenes impagas al vencer 24 horas exactas.
 
 **Why this priority**: Evita retener inventario indefinidamente.
 
@@ -77,7 +77,7 @@ Como negocio, quiero recuperar stock de órdenes impagas al vencer cinco días c
 
 **Acceptance Scenarios**:
 
-1. **Given** orden creada en T y todavía pendiente, **When** se procesa desde T + 120 horas, **Then** queda `cancelada_vencimiento` y el stock se libera una sola vez.
+1. **Given** orden creada en T y todavía pendiente, **When** se procesa desde T + 24 horas, **Then** queda `cancelada_vencimiento` y el stock se libera una sola vez.
 2. **Given** ejecución tardía, **When** procesa una pendiente vencida, **Then** conserva la fecha original de vencimiento y registra la cancelación real sin prorrogar la reserva.
 3. **Given** pago confirmado antes de vencer, **When** corre o se reintenta la tarea, **Then** no cancela ni libera stock.
 
@@ -110,7 +110,7 @@ Como negocio, quiero recuperar stock de órdenes impagas al vencer cinco días c
 - **FR-007**: Una confirmación válida crea una única orden `pendiente_pago` con detalle histórico independiente del carrito: producto, variante (talle y color), cantidad, precio unitario vigente, importe de línea, subtotal, entrega, datos de envío si aplican y fecha. Cambios posteriores de catálogo o carrito no lo alteran.
 - **FR-008**: Validación final de precios y disponibilidad, reserva de todas las unidades, detalle y orden ocurren como una sola operación: todo o nada. Compras simultáneas nunca reservan más que el stock disponible.
 - **FR-009**: La misma intención de compra, incluso por doble clic o reintento, produce una sola orden y un solo movimiento de stock. Datos distintos para la misma intención se rechazan.
-- **FR-010**: La reserva vence exactamente 120 horas después del instante de creación, a la misma hora; el vencimiento se guarda y muestra a cliente y administración, sin depender de días hábiles ni de la ejecución de la tarea.
+- **FR-010**: Para órdenes nuevas, la reserva vence exactamente 24 horas después del instante de creación, a la misma hora; el vencimiento se guarda y muestra a cliente y administración, sin depender de días hábiles ni de la ejecución de la tarea. Las órdenes existentes conservan su `venceEn` persistido.
 - **FR-011**: Una tarea programada cancela órdenes que aún estén `pendiente_pago` al vencer o después y libera la reserva. Ejecución tardía o repetida no extiende el plazo ni duplica la liberación; se distinguen vencimiento original y momento de cancelación.
 - **FR-012**: Administración solo confirma pago de `pendiente_pago` estrictamente antes del vencimiento. Registra actor y fecha; el stock continúa comprometido. En retiro se acredita el total, igual al subtotal; en envío se acredita solo el subtotal de productos y el envío permanece sin cotizar ni cobrar, sin total final. Al vencimiento exacto o después se rechaza, aunque la tarea no haya corrido.
 - **FR-013**: El cliente solo cancela una orden propia `pendiente_pago` estrictamente antes del vencimiento. Administración puede cancelar una pendiente estrictamente antes del vencimiento o una pagada antes de entrega, con motivo; al vencimiento de una pendiente corresponde `cancelada_vencimiento`, aunque la tarea aún no haya corrido. Cancelar una pendiente libera stock. Para cancelar una pagada, administración debe elegir expresamente si restituye el stock y registrar el motivo de esa elección; sin ambos datos se rechaza la cancelación. La decisión y el movimiento correspondiente ocurren una sola vez.
