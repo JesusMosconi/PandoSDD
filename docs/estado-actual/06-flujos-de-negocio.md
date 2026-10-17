@@ -2,7 +2,7 @@
 
 ## Checkout 002 verificado en Prueba
 
-Los servicios `backend/src/services/inventario.js` y `backend/src/services/ordenes.js` definen la disponibilidad efectiva y la transición de vencimiento para el checkout. Las rutas de producto, catálogo inicial, variante, carrito y confirmación usan la disponibilidad derivada. La migración y 19 pruebas de integración se ejecutaron en la rama aislada `Prueba`. El barrido manual de producción pasó y los commits con el plazo nuevo están publicados en Render y Vercel; falta verificar una corrida programada.
+Los servicios `backend/src/services/inventario.js` y `backend/src/services/ordenes.js` definen la disponibilidad efectiva y la transición de vencimiento para el checkout. Las rutas de producto, catálogo inicial, variante, carrito y confirmación usan la disponibilidad derivada. La migración y 19 pruebas de integración se ejecutaron en la rama aislada `Prueba`. El barrido manual de producción pasó y los commits con el plazo nuevo están publicados en Render y Vercel. La persona responsable aceptó esta evidencia para cerrar la entrega sin esperar el primer disparo programado.
 
 `stockDisponible = max(0, stock físico - reservas efectivas)`. Cuenta una reserva activa de una orden `pendiente_pago` solo mientras la hora de base sea anterior a `venceEn`; las reservas activas de órdenes pagadas cuentan hasta su consumo. El servicio bloquea las variantes en orden de ID antes de mutar reservas, exige cantidades positivas en SQL y cambia cada reserva activa una sola vez a `liberada` o `consumida`. Al consumir, reduce el stock físico dentro de la misma transacción.
 
