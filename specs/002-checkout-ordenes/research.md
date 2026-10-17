@@ -42,7 +42,7 @@
 
 **Alternatives considered**: Temporizador por proceso Express; no sobrevive reinicio ni asegura ejecución si no hay instancia activa. Interpretar un día como fecha calendario; viola las 24 horas exactas.
 
-**Deployment dependency**: El workflow de GitHub Actions debe quedar en la rama predeterminada, tomar el código desplegado de `main`, recibir solo el secreto de producción, validar el destino y registrar corridas, fallas y reintentos. Se eligió una hora de intervalo porque el requisito temporal se cumple con el reloj de base incluso si el barrido llega tarde. GitHub puede retrasar u omitir ejecuciones programadas; la alerta y la recuperación se verifican en T041. [Programación oficial de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+**Deployment dependency**: El workflow de GitHub Actions debe quedar en la rama predeterminada, tomar el código desplegado de `main`, recibir solo el secreto de producción, validar el destino y registrar corridas, fallas y reintentos. Se eligió una hora de intervalo porque el requisito temporal se cumple con el reloj de base incluso si el barrido llega tarde. GitHub puede retrasar u omitir ejecuciones programadas; la persona responsable aceptó una corrida manual exitosa en producción como criterio de cierre de T041 el 2026-10-17, sin exigir observar el primer disparo horario. [Programación oficial de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
 
 ## D6. Transacciones y autorización
 
