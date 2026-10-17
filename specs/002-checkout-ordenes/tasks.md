@@ -94,14 +94,14 @@
 
 ## Phase 6: User Story 4 — Vencer reservas impagas (P1)
 
-**Goal**: cancelar automáticamente pendientes al cumplirse 120 horas, aun con tarea tardía o repetida, sin competir incorrectamente con pagos.
+**Goal**: cancelar automáticamente pendientes al cumplirse su `venceEn`; para órdenes nuevas será 24 horas, aun con tarea tardía o repetida, sin competir incorrectamente con pagos.
 
 **Independent Test**: escenario 7 y 13 de `quickstart.md`: antes de `venceEn` no cancela; en `venceEn` ya no compromete stock ni acepta pago; corrida tardía produce una sola cancelación/evento/liberación; pago previo permanece pagado.
 
 - [X] T038 [US4] Implementar en `backend/src/services/ordenes.js` selección por lotes de pendientes con `venceEn <=` hora BD y reutilizar la transición compartida de T007; devolver resultados procesados, omitidos por carrera y fallidos sin duplicar evento o liberación (backend).
 - [X] T039 [US4] Crear `backend/src/jobs/vencer-ordenes.js` como comando finito por lotes, sin endpoint público: usar reloj BD, revalidar estado bajo bloqueo, continuar ante carreras, reportar procesadas/omitidas/fallidas/duración, terminar con error observable si quedan fallas y permitir reintento seguro (backend).
 - [X] T040 [US4] Definir en `backend/package.json` el comando para ejecutar `backend/src/jobs/vencer-ordenes.js`; documentar invocación manual segura, salida y recuperación en `docs/estado-actual/08-deuda-y-riesgos.md` (raíz), sin configurar todavía servicios externos.
-- [ ] T041 [US4] Configurar en GitHub Actions una invocación horaria de `backend/src/jobs/vencer-ordenes.js` contra la rama aislada `Prueba`, con secreto de conexión, ubicación concreta del workflow, operador, alertas y reintentos documentados en `docs/estado-actual/08-deuda-y-riesgos.md` y `specs/002-checkout-ordenes/verificacion.md`. El workflow programado debe quedar en la rama predeterminada y usar el código de `002-checkout-ordenes`; no declarar completa US4 hasta comprobar una corrida y el horario real. La vigencia de 120 horas no depende de la puntualidad del horario.
+- [ ] T041 [US4] Configurar en GitHub Actions una invocación programada de `backend/src/jobs/vencer-ordenes.js` contra la base `production`, con secreto de conexión, ubicación concreta del workflow, operador, alertas y reintentos documentados en `docs/estado-actual/08-deuda-y-riesgos.md` y `specs/002-checkout-ordenes/verificacion.md`. El workflow programado debe quedar en la rama predeterminada y usar el código desplegado; no declarar completa US4 hasta comprobar una corrida programada exitosa contra el destino verificado. La vigencia de 24 horas de órdenes nuevas no depende de la puntualidad del horario.
 - [X] T042 [US4] Actualizar `frontend/src/components/AdminOrdenes.tsx` para refrescar vistas administrativas pendientes abiertas como máximo cada 60 segundos con conexión, mostrar «Reserva vencida; cancelación en proceso» y luego cancelación definitiva con fecha real; mantener respuestas privadas `no-store`. La vista de cliente ya cumple este plazo por T028. Actualizar `docs/estado-actual/04-frontend.md` (raíz) en la misma tarea.
 - [X] T043 [US4] Crear pruebas dirigidas con `node:test` en `backend/test/vencimiento.test.js` para T−ε, T exacto, barrido tardío/repetido y carreras con pago/cancelación, contra base aislada autorizada; registrar comando/resultados y comprobaciones de disponibilidad, alerta y refresco de vista abierta en `specs/002-checkout-ordenes/verificacion.md` (raíz).
 
@@ -140,3 +140,9 @@
 2. Entregar primero US1 como MVP y validar sus escenarios sin considerar completo el vencimiento automático de la entrega total.
 3. Añadir US2, US3 y US4 en ese orden, validando cada historia con `quickstart.md` y registrando evidencia real.
 4. Cerrar con la revisión de requisitos, documentación actualizada en las tareas que cambian comportamiento y verificaciones disponibles. No hacer commit, push ni despliegue sin pedido explícito.
+
+## Cambio autorizado 2026-10-17 — plazo de 24 horas y barrido de producción
+
+- [ ] T047 [US1] En `backend/src/services/checkout.js` calcular `venceEn=creadaEn+24 horas` para órdenes nuevas y ajustar `backend/test/checkout.test.js`; conservar el `venceEn` persistido de órdenes anteriores. Actualizar el texto de `frontend/src/components/CheckoutPanel.tsx` y la documentación de comportamiento en la raíz.
+- [ ] T048 [US4] En `backend/.github/workflows/` preparar el workflow de producción con validación del host y base de Neon `production`, secreto específico y código de checkout verificado. Comprobar ramas, migración y órdenes pendientes reales antes de activarlo; publicar el workflow en `main` sin dejar el de `Prueba` ejecutándose en paralelo.
+- [ ] T049 [US4] Verificar en GitHub una corrida programada exitosa del workflow de producción, registrar enlace, horario, salida, operador y alcance de la prueba en `specs/002-checkout-ordenes/verificacion.md` y `docs/estado-actual/08-deuda-y-riesgos.md`; marcar T041 completa solo si la evidencia lo justifica.
