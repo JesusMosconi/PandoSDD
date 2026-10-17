@@ -8,7 +8,7 @@
 
 ## Summary
 
-Implementar revisión y confirmación del carrito en backend con precios y disponibilidad vigentes, detalle histórico e idempotencia. Mantener `TalleProducto.stock` como existencias físicas y calcular disponibilidad restando reservas vigentes. Una transacción serializa confirmaciones por variante y cierra el carrito junto con la orden. El vencimiento se evalúa por reloj de base de datos a las 120 horas; un proceso programado materializa cancelaciones y puede reintentarse. El navegador usa BFF para checkout, historial y administración. El costo de envío y total final de envíos permanecen desconocidos.
+Implementar revisión y confirmación del carrito en backend con precios y disponibilidad vigentes, detalle histórico e idempotencia. Mantener `TalleProducto.stock` como existencias físicas y calcular disponibilidad restando reservas vigentes. Una transacción serializa confirmaciones por variante y cierra el carrito junto con la orden. Las órdenes nuevas vencen a las 24 horas según reloj de base de datos; las existentes conservan su `venceEn`. Un proceso programado materializa cancelaciones y puede reintentarse. El navegador usa BFF para checkout, historial y administración. El costo de envío y total final de envíos permanecen desconocidos.
 
 ## Technical Context
 
@@ -16,17 +16,17 @@ Implementar revisión y confirmación del carrito en backend con precios y dispo
 
 **Primary Dependencies**: Express 5.2.1, Prisma 7.8 con `@prisma/adapter-pg`, PostgreSQL vía `pg`; Next.js BFF. Sin dependencias nuevas previstas.
 
-**Storage**: PostgreSQL con esquema Prisma y migración versionada nueva. No usar la base configurada hasta verificar host, rama de Neon y estado de migraciones en entorno aislado.
+**Storage**: PostgreSQL con esquema Prisma; el cambio de plazo no necesita migración. Verificar el host, la rama `production` de Neon y las órdenes pendientes antes de activar el barrido de producción. No reescribir `venceEn` de órdenes existentes.
 
-**Testing**: No hay scripts ni infraestructura de tests en ambos repositorios. Tras verificar la versión de Node, crear script `test` en `backend/package.json` y pruebas dirigidas con `node:test` en `backend/test/checkout.test.js` (concurrencia, idempotencia y validación final), `backend/test/ordenes-cliente.test.js` (propiedad, cancelación e historial), `backend/test/ordenes-admin.test.js` (permisos, pago, transiciones y stock) y `backend/test/vencimiento.test.js` (límite de 120 horas y carreras), sin instalar paquetes y contra una base aislada autorizada. Registrar comando y resultado real, además de recorridos manuales y prueba de uso cronometrada de SC-006. Frontend: lint y build antes de cerrar cada tarea que lo modifique; backend: declarar ausencia de scripts de lint/build en cada tarea afectada.
+**Testing**: Usar las pruebas existentes de `node:test` en `backend/test/` para comprobar creación con vencimiento de 24 horas, límite exacto, carreras e invariancia del `venceEn` de órdenes anteriores, contra una base aislada autorizada. Registrar comando y resultado real. Frontend: lint y build antes de cerrar cada tarea que lo modifique; backend: declarar ausencia de scripts de lint/build en cada tarea afectada.
 
-**Target Platform**: API Node/Express y web Next; despliegue real y programador no verificados en el repo. El proceso de vencimiento será un comando Node invocable por un programador externo configurado al desplegar.
+**Target Platform**: API Node/Express y web Next. El comando de vencimiento se ejecuta desde GitHub Actions; la configuración de producción debe residir en `main`, validar el destino, usar un secreto específico y registrar una corrida programada exitosa antes de declararse operativa.
 
 **Project Type**: E-commerce web con dos repositorios de código (`backend/`, `frontend/`) y documentación/spec en el repositorio raíz.
 
-**Performance Goals**: Confirmación de carrito pequeño en menos de 3 minutos de recorrido humano (SC-006); no se fija SLA de API sin mediciones. Procesar vencimientos en lotes acotados una vez por hora en la rama aislada de tesis; la validez temporal no depende de la puntualidad de la tarea.
+**Performance Goals**: Confirmación de carrito pequeño en menos de 3 minutos de recorrido humano (SC-006); no se fija SLA de API sin mediciones. Procesar vencimientos en lotes acotados con programación horaria sobre la base de producción; la validez temporal no depende de la puntualidad de la tarea.
 
-**Constraints**: 120 horas exactas; sin sobreventa ni doble liberación; precios calculados en backend; envío sin total final; sesión por cookie httpOnly/BFF; sin pasarela ni cálculo de envío.
+**Constraints**: 24 horas exactas para órdenes nuevas; `venceEn` existente inmutable; sin sobreventa ni doble liberación; precios calculados en backend; envío sin total final; sesión por cookie httpOnly/BFF; sin pasarela ni cálculo de envío.
 
 **Scale/Scope**: Una orden por carrito web confirmado; cantidades e ítems limitados por validación de entrada y parámetros de lote definidos al implementar. No hay volumen de producción verificado; índices para consultas por dueño, estado/vencimiento y reservas por variante.
 
