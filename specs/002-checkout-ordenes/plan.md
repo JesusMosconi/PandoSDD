@@ -20,7 +20,7 @@ Implementar revisión y confirmación del carrito en backend con precios y dispo
 
 **Testing**: Usar las pruebas existentes de `node:test` en `backend/test/` para comprobar creación con vencimiento de 24 horas, límite exacto, carreras e invariancia del `venceEn` de órdenes anteriores, contra una base aislada autorizada. Registrar comando y resultado real. Frontend: lint y build antes de cerrar cada tarea que lo modifique; backend: declarar ausencia de scripts de lint/build en cada tarea afectada.
 
-**Target Platform**: API Node/Express y web Next. El comando de vencimiento se ejecuta desde GitHub Actions; la configuración de producción debe residir en `main`, validar el destino, usar un secreto específico y registrar una corrida programada exitosa antes de declararse operativa.
+**Target Platform**: API Node/Express y web Next. El comando de vencimiento se ejecuta desde GitHub Actions; la configuración de producción debe residir en `main`, validar el destino y usar un secreto específico. Por decisión de la persona responsable del 2026-10-17, una corrida manual exitosa en producción, junto con los despliegues verificados, basta para confirmar esta entrega; la primera corrida programada queda fuera del criterio de cierre.
 
 **Project Type**: E-commerce web con dos repositorios de código (`backend/`, `frontend/`) y documentación/spec en el repositorio raíz.
 
