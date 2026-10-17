@@ -15,7 +15,7 @@ Este documento propone el modelo para el plan. No es una migración ejecutada. F
 | `costoEnvio` | Decimal nullable sin default cero | `null` para envío sin cotizar; para retiro es no aplicable. El contrato expone `estadoCostoEnvio`, no infiere costo gratis. |
 | `total` | Decimal nullable | Retiro: igual a subtotal. Envío: `null` mientras esta entrega no cotice envío. |
 | `metodoPago` | String actual | `manual` para órdenes de esta entrega; no implica pasarela. |
-| `creadaEn`, `venceEn` | Instantes UTC autoritativos para nuevas órdenes | Un único reloj de BD fija `creadaEn`; `venceEn = creadaEn + 120 horas` exactas. Campos opcionales para compatibilidad con filas heredadas. |
+| `creadaEn`, `venceEn` | Instantes UTC autoritativos para nuevas órdenes | Un único reloj de BD fija `creadaEn`; las órdenes nuevas usan `venceEn = creadaEn + 24 horas` exactas. Las existentes conservan el vencimiento guardado. Campos opcionales para compatibilidad con filas heredadas. |
 | `claveConfirmacion` | String nullable para filas heredadas | Unicidad `(usuarioId, claveConfirmacion)` para nuevas órdenes; misma clave con otra huella es conflicto. |
 | `huellaSolicitud` | String nullable | Identifica datos normalizados de la intención confirmada; no es autoridad sobre precios. |
 | `pagoConfirmadoEn`, `pagoConfirmadoPorId` | Instante y usuario opcionales | Solo en orden pagada; importe acreditado = subtotal. |
