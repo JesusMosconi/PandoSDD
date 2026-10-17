@@ -143,6 +143,6 @@
 
 ## Cambio autorizado 2026-10-17 — plazo de 24 horas y barrido de producción
 
-- [ ] T047 [US1] En `backend/src/services/checkout.js` calcular `venceEn=creadaEn+24 horas` para órdenes nuevas y ajustar `backend/test/checkout.test.js`; conservar el `venceEn` persistido de órdenes anteriores. Actualizar el texto de `frontend/src/components/CheckoutPanel.tsx` y la documentación de comportamiento en la raíz.
-- [ ] T048 [US4] En `backend/.github/workflows/` preparar el workflow de producción con validación del host y base de Neon `production`, secreto específico y código de checkout verificado. Comprobar ramas, migración y órdenes pendientes reales antes de activarlo; publicar el workflow en `main` sin dejar el de `Prueba` ejecutándose en paralelo.
+- [X] T047 [US1] En `backend/src/services/checkout.js` calcular `venceEn=creadaEn+24 horas` para órdenes nuevas y ajustar `backend/test/checkout.test.js`; conservar el `venceEn` persistido de órdenes anteriores. Actualizar el texto de `frontend/src/components/CheckoutPanel.tsx` y la documentación de comportamiento en la raíz.
+- [X] T048 [US4] En `backend/.github/workflows/` preparar el workflow de producción con validación del host y base de Neon `production`, secreto específico y código de checkout verificado. Comprobar ramas, migración y órdenes pendientes reales antes de activarlo; publicar el workflow en `main` sin dejar el de `Prueba` ejecutándose en paralelo.
 - [ ] T049 [US4] Verificar en GitHub una corrida programada exitosa del workflow de producción, registrar enlace, horario, salida, operador y alcance de la prueba en `specs/002-checkout-ordenes/verificacion.md` y `docs/estado-actual/08-deuda-y-riesgos.md`; marcar T041 completa solo si la evidencia lo justifica.

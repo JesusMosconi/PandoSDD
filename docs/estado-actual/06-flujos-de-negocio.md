@@ -2,7 +2,7 @@
 
 ## Checkout 002 verificado en Prueba
 
-Los servicios `backend/src/services/inventario.js` y `backend/src/services/ordenes.js` definen la disponibilidad efectiva y la transición de vencimiento para el checkout. Las rutas de producto, catálogo inicial, variante, carrito y confirmación usan la disponibilidad derivada. La migración y 19 pruebas de integración se ejecutaron en la rama aislada `Prueba`; no hay validación de despliegue ni programador externo.
+Los servicios `backend/src/services/inventario.js` y `backend/src/services/ordenes.js` definen la disponibilidad efectiva y la transición de vencimiento para el checkout. Las rutas de producto, catálogo inicial, variante, carrito y confirmación usan la disponibilidad derivada. La migración y 19 pruebas de integración se ejecutaron en la rama aislada `Prueba`. El barrido manual de producción pasó; falta verificar una corrida programada y el despliegue de API/frontend.
 
 `stockDisponible = max(0, stock físico - reservas efectivas)`. Cuenta una reserva activa de una orden `pendiente_pago` solo mientras la hora de base sea anterior a `venceEn`; las reservas activas de órdenes pagadas cuentan hasta su consumo. El servicio bloquea las variantes en orden de ID antes de mutar reservas, exige cantidades positivas en SQL y cambia cada reserva activa una sola vez a `liberada` o `consumida`. Al consumir, reduce el stock físico dentro de la misma transacción.
 
@@ -38,7 +38,7 @@ Después del pago, administración puede avanzar `pago_confirmado → en_prepara
 
 La cancelación administrativa exige motivo también para una pendiente. Pendiente antes del vencimiento libera reservas sin decisión de restitución ni devolución. Una pagada antes de entrega exige `restituirStock`: si la reserva sigue activa, se libera al restituir o se consume y descuenta stock al no restituir; si ya se consumió por envío, la restitución aumenta stock físico una vez. Estado, actor, motivo, decisión y evento se guardan en la misma transacción. La devolución monetaria queda pendiente de gestionar; no se registra reembolso automático. Las cancelaciones repetidas no duplican efectos.
 
-`barrerOrdenesVencidas` selecciona lotes de órdenes aún pendientes con `venceEn` alcanzado según hora de BD. Cada candidata pasa por la misma transición con bloqueo de orden y variantes; informa procesadas, omitidas por carrera y fallidas. Una ejecución tardía conserva el vencimiento original y registra la cancelación real. El workflow horario de `Prueba` se comprobó; el cambio a producción requiere verificar el secreto, destino y primera corrida programada.
+`barrerOrdenesVencidas` selecciona lotes de órdenes aún pendientes con `venceEn` alcanzado según hora de BD. Cada candidata pasa por la misma transición con bloqueo de orden y variantes; informa procesadas, omitidas por carrera y fallidas. Una ejecución tardía conserva el vencimiento original y registra la cancelación real. El workflow de producción quedó publicado en `main` y pasó una corrida manual sin órdenes vencidas; resta comprobar la primera corrida programada y una cancelación real cuando corresponda.
 
 `backend/src/jobs/vencer-ordenes.js` ejecuta lotes de 100 como comando finito sin endpoint público. Omite durante la misma corrida los IDs que fallaron, informa cantidades y duración en JSON y termina con código de error cuando hubo fallas para que el programador alerte y reintente. No registra credenciales ni datos de clientes.
 
