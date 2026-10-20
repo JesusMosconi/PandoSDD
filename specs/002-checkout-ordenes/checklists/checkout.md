@@ -29,7 +29,7 @@
 
 ## Vencimiento y ciclo de la orden
 
-- [x] CHK014 ¿Queda definido que cinco días corridos equivalen a 120 horas exactas desde la creación, incluido el límite en el instante de vencimiento? [Clarity, Spec §FR-010, §FR-012]
+- [x] CHK014 ¿Queda definido que un día equivale a 24 horas exactas desde la creación de una orden nueva, incluido el límite en el instante de vencimiento y la conservación del `venceEn` de órdenes existentes? [Clarity, Spec §FR-010, §FR-012]
 - [x] CHK015 ¿Es consistente la disponibilidad del stock al vencer con una tarea que se ejecuta tarde o se reintenta, sin prolongar la reserva? [Consistency, Spec §FR-010, §FR-011, Plan §Transaction boundaries]
 - [x] CHK016 ¿Están definidos los resultados de una carrera entre confirmación de pago, cancelación voluntaria y vencimiento, incluida la acción que pierde? [Coverage, Spec §FR-012, §FR-014, Edge Cases]
 - [x] CHK017 ¿Están enumerados estados terminales, transiciones permitidas y rutas distintas de retiro y envío sin saltos implícitos? [Completeness, Spec §FR-015]

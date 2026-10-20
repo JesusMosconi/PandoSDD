@@ -36,13 +36,13 @@
 
 ## D5. Vencimiento y reloj
 
-**Decision**: `venceEn = creadaEn + 120 horas` con instantes UTC de la base de datos. Toda transición sensible evalúa el reloj de la base después de adquirir los bloqueos necesarios. A partir del vencimiento, pago y cancelación voluntaria de pendiente se rechazan y se materializa `cancelada_vencimiento`. Un comando backend ejecuta barridos por lotes, con registro de ejecución, errores y reintento; para la tesis se programa una vez por hora en `Prueba`. Una tarea que empieza tarde procesa todos los pendientes vencidos; no prorroga reservas. La lógica transaccional de transición se comparte con las acciones normales.
+**Decision**: Para órdenes nuevas, `venceEn = creadaEn + 24 horas` con instantes UTC de la base de datos; las existentes conservan su `venceEn`. Toda transición sensible evalúa el reloj de la base después de adquirir los bloqueos necesarios. A partir del vencimiento, pago y cancelación voluntaria de pendiente se rechazan y se materializa `cancelada_vencimiento`. Un comando backend ejecuta barridos por lotes, con registro de ejecución, errores y reintento; se programa una vez por hora en producción. Una tarea que empieza tarde procesa todos los pendientes vencidos; no prorroga reservas. La lógica transaccional de transición se comparte con las acciones normales.
 
 **Rationale**: El programador puede retrasarse, detenerse o repetir una ejecución. La disponibilidad y elegibilidad dependen del instante persistido, no del momento del barrido.
 
-**Alternatives considered**: Temporizador por proceso Express; no sobrevive reinicio ni asegura ejecución si no hay instancia activa. Interpretar cinco días como fechas calendario; viola las 120 horas exactas.
+**Alternatives considered**: Temporizador por proceso Express; no sobrevive reinicio ni asegura ejecución si no hay instancia activa. Interpretar un día como fecha calendario; viola las 24 horas exactas.
 
-**Deployment dependency**: El workflow de GitHub Actions debe quedar en la rama predeterminada, tomar el código de `002-checkout-ordenes`, recibir solo el secreto de la base aislada `Prueba` y registrar corridas, fallas y reintentos. Se eligió una hora de intervalo porque el requisito temporal se cumple con el reloj de base incluso si el barrido llega tarde. GitHub puede retrasar u omitir ejecuciones programadas; la alerta y la recuperación se verifican en T041. [Programación oficial de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+**Deployment dependency**: El workflow de GitHub Actions debe quedar en la rama predeterminada, tomar el código desplegado de `main`, recibir solo el secreto de producción, validar el destino y registrar corridas, fallas y reintentos. Se eligió una hora de intervalo porque el requisito temporal se cumple con el reloj de base incluso si el barrido llega tarde. GitHub puede retrasar u omitir ejecuciones programadas; la persona responsable aceptó una corrida manual exitosa en producción como criterio de cierre de T041 el 2026-10-17, sin exigir observar el primer disparo horario. [Programación oficial de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
 
 ## D6. Transacciones y autorización
 
