@@ -1,8 +1,28 @@
 # API Express
 
+## Extensión 003 en la rama de trabajo
+
+Las rutas siguientes están montadas localmente y requieren `verificarToken` y `esAdmin`. Todavía no cuentan con prueba HTTP de integración contra `Prueba`.
+
+| Archivo | Método y ruta | Efecto |
+|---|---|---|
+| `admin-proveedores.routes.js` | GET/POST `/admin/proveedores`, GET/PUT `/admin/proveedores/:id`, POST `/admin/proveedores/:id/desactivacion` y `/reactivacion` | Lista paginada con filtros, alta, detalle con eventos, edición y baja/reactivación lógica con motivo. |
+| `admin-compras.routes.js` | GET/POST `/admin/compras`, GET/PUT `/admin/compras/:id` | Lista con filtros y paginación; alta y edición de borradores con líneas y gastos. |
+| `admin-compras.routes.js` | POST `/admin/compras/productos` | Crea ficha marcada desde Compras, `web=false` y sin stock inicial. |
+| `admin-compras.routes.js` | POST `/admin/compras/:id/resumen`, POST `/admin/compras/:id/confirmacion` | Recalcula importes en servidor y confirma una recepción idempotente mediante clave y huella aceptada. |
+| `admin-inventario.routes.js` | POST `/admin/inventario/ajustes` | Registra aumento o merma con motivo y actor; la merma no invade reservas y el costo de una entrada puede ser conocido o desconocido. |
+| `admin-inventario.routes.js` | GET `/admin/inventario/variantes/:id` | Devuelve saldo físico, comprometido y libre, cobertura de costo, partidas y movimientos paginados. |
+
+El detalle administrativo de orden añade origen de partidas, cobertura de costo y margen de mercadería cuando corresponde. La cancelación pagada antes de la salida física registra la reversión FIFO y el reintegro pendiente; después de la salida responde `DEVOLUCION_REQUERIDA`.
+
+Las rutas administrativas de compras incluyen `POST /admin/compras/:id/correcciones`, `/anulacion` y `/devoluciones-proveedor`. Las de órdenes incluyen `POST /admin/ordenes/:id/devoluciones`, `/devoluciones/:devolucionId/reintegros`, `/cierre-sin-reintegro` y `/recepciones`. Exigen autorización de administrador y claves de operación para evitar duplicaciones. Estas rutas están implementadas localmente; su comportamiento HTTP aún no fue probado.
+
+El código local añade `GET /admin/informes/compras-ventas` y `GET /admin/productos/:id/historial`, ambos exclusivos de administración y con filtros `desde`, `hasta`, producto, variante, proveedor y paginación. Responden resumen de todos los hechos filtrados, `totalResultados` y la página solicitada; el historial de producto agrega precios publicados por intervalo y stock físico actual. El informe fecha compras por recepción, ventas por pago, aceptación de devoluciones, reintegros efectivos y correcciones por sus fechas propias. Los cobros de envío no se mezclan con mercadería. La consulta usa atribuciones FIFO y expresa el margen como indeterminado si falta costo. No se ha verificado aún mediante solicitudes HTTP ni pruebas de integración.
+La creación de variantes comienza en stock cero. La edición y la desactivación ya no modifican stock directamente; para cambiarlo se usa el ajuste trazable. Las escrituras de checkout, compras, órdenes y variantes consultan el estado global y se bloquean durante una suspensión del corte. Estas rutas nuevas todavía no tienen una prueba HTTP de integración en esta sesión.
+
 Todas las rutas siguientes llevan prefijo `/api` por `backend/src/index.js`. En la columna acceso, `A` significa `verificarToken` + `esAdmin`, `C` significa `verificarToken` + `esCliente`, `U` significa `verificarToken` y `P` pública. `V` indica `validateBody`; las demás validaciones se describen en texto. Los controles de checkout y órdenes se limitan a sus propios prefijos para no interceptar otros routers de `/api`. La fuente de cada grupo es el archivo indicado. Fuentes de middleware: `backend/src/middleware/auth.js`, `backend/src/middleware/es-admin.js`, `backend/src/middleware/es-cliente.js`, `backend/src/utils/validate.js`.
 
-El proxy Next `/api/admin/[...ruta]` reenvía solo el prefijo `ordenes` a Express `/api/admin/ordenes`; las demás rutas mantienen su mapeo anterior. Devuelve JSON 401/403 según sesión/rol en el BFF, y conserva cuerpo, método, estado y `Content-Type` del backend.
+El proxy Next `/api/admin/[...ruta]` reenvía `ordenes`, `proveedores`, `compras`, `inventario` e `informes` a los mismos prefijos de Express; las demás rutas mantienen su mapeo anterior. Devuelve JSON 401/403 según sesión/rol en el BFF, y conserva cuerpo, método, estado y `Content-Type` del backend.
 
 | Archivo de `backend/src/routes/` | Método y ruta | Acceso | Validación/efecto principal |
 |---|---|---|---|
