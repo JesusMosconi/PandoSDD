@@ -15,14 +15,14 @@ Desde `frontend/`: `npm.cmd run lint` y `npm.cmd run build`. Desde `backend/`: n
 
 ## Escenarios de extremo a extremo
 
-1. **Retiro**: cliente autenticado agrega dos variantes; desde `/carrito` entra a checkout, revisa precios, acepta y confirma. Verificar una orden `pendiente_pago`, detalle inmutable, total igual a subtotal y vencimiento exactamente 120 horas después de creación. Un nuevo carrito queda disponible.
+1. **Retiro**: cliente autenticado agrega dos variantes; desde `/carrito` entra a checkout, revisa precios, acepta y confirma. Verificar una orden `pendiente_pago`, detalle inmutable, total igual a subtotal y vencimiento exactamente 24 horas después de creación. Un nuevo carrito queda disponible.
 2. **Envío**: exigir los cinco campos; normalizar email. Mostrar subtotal y «Envío: costo a coordinar» sin total final. Confirmar pago manual: solo productos acreditados. Intentar marcar `enviada` sin constancia externa: rechazo; con constancia: éxito sin total numérico.
    Probar límites de longitud, espacios y caracteres de FR-002 en cada campo; un error identifica exactamente los campos rechazados y conserva los datos ingresados.
 3. **Precio**: cambiar precio de producto en base de prueba entre agregar al carrito y revisar. Mostrar precio anterior/vigente. Cambiarlo otra vez después de aceptar: confirmación devuelve resumen nuevo y exige nueva aceptación; sin orden parcial.
 4. **Disponibilidad**: retirar producto, desactivar variante, reducir stock por debajo de cantidad y agregar `ProductoImprovisado` a carritos de prueba. Probar además dos líneas de la misma variante: cada una cabe por separado, pero su suma supera el stock; resumen y confirmación deben bloquear ambas. Cada caso impide confirmar, identifica ítem/motivo y conserva carrito editable. No se borra ítem automáticamente.
 5. **Concurrencia**: dos clientes intentan comprar la última unidad al mismo tiempo; exactamente uno obtiene reserva. Probar también edición de stock administrativa concurrente y edición de un carrito mientras se confirma; no sobreventa ni orden incompleta.
 6. **Idempotencia**: doble clic y dos solicitudes con misma clave/cuerpo devuelven una orden. Reutilizar clave con cuerpo diferente y clave nueva sobre carrito convertido: conflicto sin nueva orden. Simular pérdida de respuesta y reintentar.
-7. **Vencimiento**: con reloj de prueba controlado, probar un instante antes, exactamente a T+120h y después. Al vencimiento exacto la reserva ya no reduce disponibilidad. Barrido tardío cancela pendiente, conserva vencimiento original y no mueve stock físico; ejecutar dos veces y comprobar un único evento/liberación. Pago justo antes de vencer detiene cancelación; exactamente al vencer se rechaza aun si la tarea no corrió.
+7. **Vencimiento**: con reloj de prueba controlado, probar un instante antes, exactamente a T+24h y después para una orden nueva. Al vencimiento exacto la reserva ya no reduce disponibilidad. Barrido tardío cancela pendiente, conserva vencimiento original y no mueve stock físico; ejecutar dos veces y comprobar un único evento/liberación. Pago justo antes de vencer detiene cancelación; exactamente al vencer se rechaza aun si la tarea no corrió.
 8. **Cancelaciones**: cliente cancela pendiente antes de vencer y reintenta. Administración cancela una pagada con decisión `restituirStock=true` y luego `false` en órdenes de prueba separadas, antes/después del consumo; verificar movimientos correctos y sin duplicados. Ambas muestran «devolución pendiente de gestionar», no «devuelto».
 9. **Permisos**: cliente A no lista/ve/cancela orden de B; sin sesión no hay acceso; usuario no admin recibe 403 para administración. Revisar también que BFF no entrega el JWT al navegador.
 10. **Historial**: modificar nombre, precio o visibilidad de producto después de confirmar; `/cuenta` y admin conservan nombre/variante/precio históricos. Órdenes heredadas sin nuevos campos no se convierten en pendientes ni reservas nuevas.
@@ -32,7 +32,7 @@ Desde `frontend/`: `npm.cmd run lint` y `npm.cmd run build`. Desde `backend/`: n
 
 ## Salida esperada de la tarea
 
-Cada corrida informa número de pendientes vencidas procesadas, omitidas por carrera, fallidas y duración; falla visible para reintento/alerta. Para la tesis, el workflow de GitHub Actions inicia el comando una vez por hora en `Prueba`. La prueba con tarea retrasada debe demostrar que el límite de pago y la disponibilidad siguen rigiéndose por `venceEn`.
+Cada corrida informa número de pendientes vencidas procesadas, omitidas por carrera, fallidas y duración; falla visible para reintento/alerta. El workflow de GitHub Actions inicia el comando en producción según programación horaria. La prueba con tarea retrasada debe demostrar que el límite de pago y la disponibilidad siguen rigiéndose por `venceEn`.
 
 ## Registro de evidencia
 

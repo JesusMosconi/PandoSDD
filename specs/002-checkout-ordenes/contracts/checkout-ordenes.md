@@ -60,4 +60,4 @@ Resumen e historial presentan carga desde el inicio. Tras 10 segundos sin respue
 
 ## Vencimiento
 
-No hay endpoint público. `backend/src/jobs/vencer-ordenes.js` ejecuta un barrido y termina. Selecciona lotes con `pendiente_pago` y `venceEn <= reloj BD`, bloquea y transiciona usando el mismo servicio que las acciones de usuario. Registra procesadas, omitidas por carrera, fallidas y duración. Para la tesis, GitHub Actions lo invoca una vez por hora en la base aislada `Prueba`; fallas/retrasos se alertan y el siguiente barrido recupera pendientes. Disponibilidad y elegibilidad de pago respetan el vencimiento incluso con tarea retrasada.
+No hay endpoint público. `backend/src/jobs/vencer-ordenes.js` ejecuta un barrido y termina. Selecciona lotes con `pendiente_pago` y `venceEn <= reloj BD`, bloquea y transiciona usando el mismo servicio que las acciones de usuario. Registra procesadas, omitidas por carrera, fallidas y duración. GitHub Actions lo invoca con programación horaria en producción; fallas/retrasos se alertan y el siguiente barrido recupera pendientes. Disponibilidad y elegibilidad de pago respetan el vencimiento incluso con tarea retrasada.
