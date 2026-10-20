@@ -50,7 +50,9 @@ Relevamiento estático del código. Las prioridades expresan impacto potencial; 
 
 13. **Pruebas de checkout.** El backend ejecutó 24 pruebas en la rama aislada `Prueba`, sin fallas, antes del cambio a 24 horas; T022, T029, T037 y T043 quedaron verificadas para el comportamiento anterior. El recorrido manual de T022 terminó en 1 minuto 21 segundos según medición informada por el usuario. La vista administrativa abierta mostró el vencimiento en proceso y la cancelación definitiva mediante refresco automático. El workflow programado funciona en `Prueba`; falta verificar el cambio de plazo y la operación en producción. **No verificado:** cobertura en CI para toda la suite. Fuentes: `backend/package.json`, `specs/002-checkout-ordenes/tasks.md`, `specs/002-checkout-ordenes/verificacion.md`.
 
-## Comportamiento actual con política pendiente
+## Comportamiento por entorno
+
+**Corte 003 activado solo en `Prueba/neondb` el 2026-10-19.** Se creó la rama de recuperación `backup-pre-corte-003-prueba-20261019` desde `Prueba` sin vencimiento automático y se verificaron 12 migraciones, 16 productos, 30 variantes con stock y 466 unidades. El corte quedó activo con 32 variantes conciliadas y el mismo stock físico. Los 30 costos iniciales son ejemplos ficticios definidos como 50 % de los precios de referencia entregados para la tesis; no representan costos reales de compra. El código 003 aún no se desplegó, por lo que no hay verificación de rutas servidas ni debe atribuirse este estado al backend o frontend publicados. Después del corte, por pedido del usuario, el precio de venta del producto 9 se actualizó de `50000` a `55000` con una nueva vigencia regular; la copia de recuperación conserva el valor anterior.
 
 Al crear `ItemCarrito`, la ruta copia `Producto.precio` a `precioUnitario`; si el ítem ya existe, solo aumenta `cantidad` y conserva el precio guardado. El subtotal del carrito se calcula con `cantidad * Number(precioUnitario)` por ítem. Checkout 002 compara con `Producto.precio` vigente, muestra diferencias y crea la orden con importes decimales del servidor tras aceptación explícita. La migración se aplicó a `Prueba` y `production`; las pruebas de integración se ejecutaron solo en `Prueba`. No se validó despliegue. Fuentes: `backend/src/routes/carrito.routes.js`, `backend/src/services/checkout.js`, `backend/prisma/schema.prisma`, `specs/002-checkout-ordenes/verificacion.md`.
 
@@ -72,3 +74,7 @@ La constitution 1.0.0 rige el código nuevo y modificado desde el 2026-10-09. Lo
 - **Acceso directo al backend desde el frontend:** `apiFetch` usa `NEXT_PUBLIC_API_URL` y las páginas públicas lo llaman sin pasar por una ruta del BFF. Fuente: `frontend/src/lib/api.ts:1-36`, `frontend/src/app/page.tsx:12-21`.
 
 **No verificado:** incidencia, explotación o impacto de estos riesgos en producción; las pruebas solo usaron datos descartables en `Prueba`.
+
+## Instalación desde una base vacía de la feature 003
+
+Las carpetas de migración `20261018_asignacion_partida_fifo` y `20261018_compras_proveedores_base` se ordenan alfabéticamente en sentido inverso a su dependencia: FIFO necesita `PartidaInventario`, creada por la base de compras. En una base vacía, `prisma migrate deploy` falla al llegar a FIFO. Para una instalación nueva y vacía, `backend/src/jobs/preparar-base-nueva.js` valida el destino, aplica primero las seis migraciones anteriores y la base de compras, y luego las cinco restantes. Pasó en una base descartable; no se editaron migraciones ya aplicadas. En bases existentes se mantiene `prisma migrate deploy` habitual, sin ejecutar ese comando de preparación.

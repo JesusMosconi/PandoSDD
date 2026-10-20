@@ -1,6 +1,25 @@
 # Modelo de datos
 
-Fuente de todos los campos, tipos, relaciones y restricciones de la tabla: `backend/prisma/schema.prisma`. `?` significa opcional; `[]`, relación múltiple; `id` es `Int @id @default(autoincrement())` en los 23 modelos. Las relaciones indicadas usan las claves foráneas con `@relation(fields, references)` del esquema. Los modelos de checkout descritos abajo están preparados en una migración nueva, aún no aplicada por este trabajo.
+## Extensión 003 en la rama de trabajo
+
+El esquema de esta rama incorpora `Proveedor` (baja lógica) y `EventoProveedor`; `Ingreso` conserva un borrador o una recepción confirmada con `LineaIngreso` y `GastoAdicionalCompra`. `PartidaInventario` identifica unidades por variante, ingreso y costo unitario conocido o desconocido; `MovimientoInventario` registra entradas y salidas físicas. `Producto.creadoDesdeCompras` y `TalleProducto.inicioInventarioCero` distinguen fichas y variantes nuevas del catálogo heredado. La migración `20261018_compras_proveedores_base` se aplicó a Neon `PandoCba`/`Prueba`/`neondb`/`public`, según la verificación registrada en `specs/003-compras-proveedores-costos/verificacion.md`.
+
+`AsignacionPartida` vincula una partida, variante, línea de orden y reserva, con cantidad positiva y estado `reservada`, `vendida`, `liberada` o `revertida`. Al pago guarda costo unitario de ese momento, importe efectivo y descuento atribuido. La migración `20261018_asignacion_partida_fifo` está aplicada en `Prueba/neondb` y la suite backend se ejecutó allí. Las variantes heredadas no recibían asignaciones antes del corte de inventario. `EstadoCorteInventario`, `EstadoCorteVariante` y `ExistenciaInicial` están en el esquema; el corte operativo de `Prueba/neondb` se activó el 2026-10-19 con 32 variantes conciliadas, 30 existencias iniciales, 466 unidades y costos ficticios conocidos para las 30. Esta verificación es de base de datos; el código 003 aún no se desplegó.
+
+| Modelo 003 | Campos y relaciones principales | Restricciones relevantes |
+|---|---|---|
+| `Proveedor` | Nombre, contacto, observaciones, `activo`, fechas; eventos e ingresos | La desactivación es lógica. |
+| `EventoProveedor` | Proveedor, tipo, motivo, valores anteriores/nuevos, actor y fecha | Índice por proveedor y fecha. |
+| `Ingreso` | Proveedor, fechas de compra y recepción, estado, comprobante, clave y huella de confirmación; líneas, gastos y partidas | `claveOperacion` única; índices por proveedor y estado. |
+| `GastoAdicionalCompra` | Ingreso, concepto, importe y `activo` | Importe no negativo en SQL. |
+| `LineaIngreso` | Ingreso, variante, cantidad, costo unitario y `activo` | Variante única por ingreso; cantidad positiva. |
+| `PartidaInventario` | Variante, ingreso opcional, origen, cantidad original, costo unitario opcional, fecha de recepción y confirmación | Orden FIFO indexado; costo `null` significa desconocido. |
+| `MovimientoInventario` | Variante, partida e ingreso opcionales, tipo, cantidad firmada, motivo, actor y fecha | Índices por variante, partida e ingreso. |
+| `AsignacionPartida` | Partida, variante, detalle de orden, reserva, cantidad, estado, costo e importes al pago, fechas | Cantidad positiva, estados permitidos e índices por variante, partida, reserva y detalle. |
+| `EstadoCorteInventario` | Estado global, suspensión, fechas y actores de verificación/activación | Una sola fila; `activo` exige rutas verificadas y suspensión levantada. |
+| `EstadoCorteVariante` | Variante, estado, origen, saldo físico y comprometido capturados, conciliación | Una marca por variante; distingue pendiente, conciliada y bloqueada. |
+| `ExistenciaInicial` | Variante, partida y movimiento inicial, saldo, costo opcional, actor y fecha | Una por variante con saldo positivo; costo `null` significa desconocido y `0` es costo conocido. |
+La tabla siguiente conserva el inventario de los 23 modelos de la base 002; los modelos 003 se resumen en la tabla superior. Fuente de los campos, tipos, relaciones y restricciones de la tabla: `backend/prisma/schema.prisma`. `?` significa opcional; `[]`, relación múltiple; `id` es `Int @id @default(autoincrement())` en los 23 modelos. Las relaciones indicadas usan las claves foráneas con `@relation(fields, references)` del esquema. Los modelos de checkout descritos abajo provienen de la migración 002.
 
 | Modelo | Campos escalares además de `id` | Relaciones y restricciones |
 |---|---|---|
@@ -41,4 +60,8 @@ Fuente de todos los campos, tipos, relaciones y restricciones de la tabla: `back
 
 Convenciones observadas: nombres de dominio mayormente en español, con excepciones `CreatedAt`, `UpdatedAt`, `web`, `ItemCarrito`; `activo` existe en `Usuario`, `Suscripcion` y `Producto`, pero solo la baja de `Producto` actualiza `activo` en su ruta DELETE. La baja de `TalleProducto` usa `estado="inactivo"` y `stock=0`. Fuentes: `backend/prisma/schema.prisma`, `backend/src/routes/productos.routes.js`, `backend/src/routes/talle-producto.routes.js`, `backend/src/routes/suscripcion.routes.js`.
 
-Según informó el usuario, las cinco migraciones anteriores figuran aplicadas en la rama de prueba `Prueba` de Neon y allí hay cero órdenes. Este trabajo no comprobó ese estado mediante conexión ni aplicó la migración nueva. Fuente de archivos versionados: `backend/prisma/migrations/`.
+La frase anterior sobre las cinco migraciones corresponde a la revisión inicial. En el trabajo local de la funcionalidad 003 se verificaron y aplicaron las migraciones nuevas de corte, compras, asignación FIFO, correcciones/devoluciones y origen de recepción en `Prueba`/`neondb`/`public`; el último `prisma migrate status` informó el esquema al día. El corte se ejecutó y activó en esa rama de prueba el 2026-10-19; no se ejecutó en `production`.
+
+El esquema actual añade `Ingreso`, `PartidaInventario`, `MovimientoInventario`, `AsignacionPartida`, `CorreccionIngreso`, `DevolucionProveedor`, `DevolucionCliente`, `DevolucionClienteAsignacion`, `PagoReintegro` y `RecepcionDevolucion`. La asignación de devolución conserva unidades, importe efectivo y costo revertido por origen FIFO. Cada partida creada por recepción apta referencia su recepción y asignación original; las dañadas no crean stock. Las migraciones aplicadas quedan inmutables. Fuente: `backend/prisma/schema.prisma` y `backend/prisma/migrations/20261019_origen_recepcion_devolucion/migration.sql`.
+
+`VigenciaPrecio` registra por producto precio regular o promocional, importe, origen e intervalo `[inicio, fin)`. La migración `20261019_vigencias_precio` observó los precios regulares de productos activos y publicados al aplicarse, sin reconstruir precios anteriores. Un constraint excluye intervalos solapados de igual producto y clase. Prisma informó el esquema al día tras aplicarla en `Prueba`.

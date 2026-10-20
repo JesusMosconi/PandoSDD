@@ -1,0 +1,51 @@
+# Modelo de datos propuesto: Compras, costos y precios
+
+Este documento diseña entidades y reglas; no modifica `backend/prisma/schema.prisma` ni aplica migraciones. Nombres finales y tipos se revisan al implementar. Los nuevos nombres de dominio serán españoles y una migración nueva preservará las filas existentes.
+
+## Entidades y relaciones
+
+| Entidad | Campos de dominio y reglas | Relaciones |
+|---|---|---|
+| `Proveedor` | nombre obligatorio, contacto y observaciones opcionales, `activo`, fechas de creación/cambio; eventos de desactivación/reactivación con motivo y actor. | Uno a muchos `Ingreso`. Reactivar conserva identidad e historia; ingresos nuevos solo mientras está activo. |
+| `Producto` (campo nuevo) | `creadoDesdeCompras` booleano, falso por defecto para fichas preexistentes; verdadero solo en altas iniciadas desde Compras. | Solo una ficha marcada requiere un ingreso confirmado de alguna variante para habilitar publicación manual. |
+| `Ingreso` | proveedor, fecha de compra, fecha de recepción, estado `borrador`/`confirmado`/`anulado`, observaciones, referencia textual, gastos adicionales, clave de confirmación, actor/fecha. Recepción no anterior a compra. | Uno a muchos `PartidaInventario`, correcciones, devoluciones a proveedor y movimientos. |
+| `PartidaInventario` | variante, cantidad de origen positiva, costo unitario decimal no negativo o desconocido en procedencia inicial/ajuste, orden estable de confirmación, cantidad física y comprometida derivable de movimientos/asignaciones. | Pertenece a ingreso, corte o ajuste con procedencia explícita; referencia `TalleProducto`, proveedor derivado del ingreso cuando exista. |
+| `ExistenciaInicial` | variante, saldo físico capturado, costo conocido o desconocido, instante y actor del corte, identificador único de corte por variante y estado de conciliación. No crea compra ficticia. | Partida de procedencia inicial y reservas existentes vinculadas. |
+| `AsignacionPartida` | partida, línea de `DetalleOrden`, cantidad positiva, estado `reservada`/`vendida`/`liberada`/`revertida`, costo al pago, importe efectivo atribuido, fechas. | Vincula la reserva de variante y la venta a una o varias partidas; múltiples asignaciones por línea. |
+| `MovimientoInventario` | variante, partida, clase (recepción, consumo, ajuste, devolución, corrección), cantidad con signo, fecha, motivo, actor, referencia de hecho. | Explica cada cambio de stock físico y sus unidades de origen; no se borra. |
+| `CorreccionIngreso` | ingreso/partida, campo corregido, valor anterior y nuevo, motivo, fecha, actor; efecto calculado sobre ventas y compras. | Puede tener varias ventas afectadas por costo; no reemplaza silenciosamente el original. |
+| `DevolucionCliente` | venta y línea original, unidades aceptadas, costo revertido, importe debido calculado por backend a partir del importe efectivo atribuido a esas unidades, importe acumulado reintegrado, saldo pendiente y estado `pendiente`/`parcial`/`efectivo`/`sin_reintegro`; motivo, fechas y actor. Recepción física y clasificación separadas. | Una venta tiene varias devoluciones parciales limitadas por unidades aún no devueltas y por su importe efectivo original. Varios reintegros efectivos se vinculan a la misma devolución. |
+| `RecepcionDevolucion` | devolución, cantidad apta o dañada, fecha y actor. Solo apta crea stock vendible y nueva procedencia ligada al costo original. | Pertenece a devolución de cliente; no duplica costo revertido. |
+| `DevolucionProveedor` | ingreso/partida, cantidad, importe de mercadería revertido, motivo, fecha y actor. | Solo unidades disponibles de la partida; conserva ingreso original. |
+| `VigenciaPrecio` | producto, clase regular/promocional, importe publicado, inicio, fin opcional, origen de publicación. Intervalos por clase sin solaparse. | Historia de `Producto`; comienza al activarse la función, sin backfill especulativo. |
+| `VentaReconocida` (vista o registro histórico) | orden, fecha de pago, importe efectivo de mercadería, costo conocido, unidades con costo desconocido, margen completo o indeterminado. | Deriva de `Orden`, `DetalleOrden` y asignaciones; no confundir con el modelo heredado `Venta` ligado a `Carrito`. |
+
+## Invariantes de cantidades e importes
+
+1. `TalleProducto.stock` continúa como saldo físico. Antes del corte, solo las variantes nuevas admitidas en el flujo de compras generan partidas y movimientos; las heredadas mantienen el flujo anterior y no aceptan ingresos nuevos. Después de activar el corte global, cada aumento/disminución exige un `MovimientoInventario` equivalente y una procedencia de partida. Ninguna operación termina con stock negativo ni por debajo de reservas efectivas.
+2. Una confirmación de ingreso crea cada partida y movimiento de entrada exactamente una vez. Un borrador o ficha de producto nueva no aumenta stock. Una variante nueva comienza en cero y producto no publicado.
+3. Por partida, la suma de unidades libres, comprometidas por reservas, vendidas pero aún físicas y salidas físicas se concilia con unidades recibidas más retornos/ajustes pertinentes. Para cada reserva del flujo FIFO, la suma de sus asignaciones iguala `ReservaStock.cantidad`; por línea de orden, asignaciones igualan `DetalleOrden.cantidad`. Las reservas heredadas previas al corte permanecen fuera del margen nuevo y no reciben asignaciones parciales.
+4. El FIFO toma existencias iniciales antes de ingresos posteriores al corte; luego fecha de recepción y orden estable de confirmación. Partidas registradas tardíamente solo participan desde su confirmación. Asignaciones pagadas no cambian de partida por un ingreso posterior.
+5. Costo desconocido se representa como ausencia explícita de valor y cuenta unidades afectadas. Costo conocido `0` es distinto. El margen completo solo existe si todas las unidades relevantes tienen costo conocido.
+6. Importes se calculan con decimal exacto y moneda del catálogo. Los gastos adicionales no se reparten al costo unitario. El importe de una venta con descuento se distribuye entre asignaciones proporcionalmente al precio vendido por unidad; la suma atribuida coincide exactamente con el importe de mercadería, incluso tras redondeo.
+7. Tras calcular las cuotas exactas del importe de venta, asignar centavos enteros inferiores y repartir el residuo de un centavo por vez a las cuotas con mayor fracción descartada; empatar por orden FIFO estable. La misma atribución se usa en filtros por proveedor y en la venta completa.
+8. Una devolución aceptada revierte costo una sola vez; el backend asigna a cada unidad su parte del importe efectivo original con centavos residuales por orden FIFO estable y calcula el importe debido de las unidades devueltas sin aceptar un total del cliente. Cada reintegro efectivo reduce ingreso neto por su importe una sola vez; solo recepción física apta aumenta stock vendible. Los reintegros acumulados no superan el importe debido ni la suma de devoluciones supera el importe de la línea original; las recepciones aptas y dañadas acumuladas no superan unidades aceptadas y una unidad no puede clasificarse dos veces.
+9. Corrección/anulación y devolución a proveedor no pueden retirar unidades reservadas o vendidas ni borrar referencias históricas; las revisiones de costo muestran antes/después y su efecto en margen.
+
+## Estados y transiciones
+
+| Objeto | Transiciones permitidas | Efecto |
+|---|---|---|
+| Ingreso | borrador → confirmado; borrador → anulado; confirmado → anulado solo si ninguna unidad comprometida/vendida ni saldo incompatible | Confirmación crea entrada; anulación elegible crea movimiento compensatorio con motivo. |
+| Asignación | reservada → vendida al pago; reservada → liberada al cancelar/vencer antes de pago; vendida → revertida en devolución/cancelación pagada aceptada | La transición al pago reconoce costo; consumo físico posterior no cambia venta. |
+| Reintegro | pendiente → parcial con primer pago; parcial → parcial con pago adicional; pendiente/parcial → efectivo al cubrir el saldo; pendiente/parcial → sin_reintegro con motivo para cerrar saldo sin pagar | Cada pago reduce importe cobrado neto solo por lo efectivamente reintegrado. Los pagos previos permanecen en historia. |
+| Recepción de cliente | pendiente → apta o dañada por unidades parciales | Solo apta vuelve a stock vendible. |
+| Proveedor | activo → inactivo; inactivo → activo con motivo administrativo | La misma identidad conserva ingresos y períodos de actividad previos. |
+
+## Corte y compatibilidad
+
+- La migración es aditiva. No modifica `Orden`, `DetalleOrden`, `ReservaStock` ni `Venta` existentes para inventar historia. Relaciones nuevas admiten registros históricos sin asignación.
+- Bajo bloqueo de cada variante heredada se registra existencia inicial igual al stock físico en ese instante, se vinculan reservas efectivas (incluidas pagadas aún activas) y se comprueba que el remanente libre no sea negativo. Las variantes nuevas con partidas ya conciliadas se marcan como cubiertas sin crear existencia inicial ni duplicar saldo. El corte es idempotente por variante y se detiene ante discrepancia.
+- El corte suspende escrituras de stock y reservas hasta su conciliación completa. Cada variante y su marca de completada se guardan en una sola transacción. Tras interrupción, las completadas se omiten, las pendientes se concilian y se reanudan. El estado global `conciliado` no activa la política: una transición operativa explícita a `activo`, bajo suspensión de escrituras y con todas las variantes aún conciliadas, exige constancia persistida de verificación de rutas (`rutasVerificadasEn` y actor) tras revisar en base aislada los recorridos de corte, ajuste y reserva. Si no es posible terminar, se usa la copia de recuperación verificada antes de reabrir escrituras.
+- Órdenes pagadas antes del corte se etiquetan como históricas sin margen reconstruido. La vinculación física de su reserva no crea una venta nueva ni costo histórico confiable.
+- A partir del corte, toda ruta que escriba `TalleProducto.stock` debe crear el movimiento y mantener las partidas conciliadas, incluidas rutas de Productos y cancelación administrativa. La migración por sí sola no activa esta política.

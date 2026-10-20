@@ -1,5 +1,9 @@
 # Frontend
 
+## Extensión 003 en la rama de trabajo
+
+`/admin/proveedores` y `/admin/compras` agregan listas y formularios administrativos con estados de carga, error y reintento. Compras presenta un resumen antes de confirmar el ingreso y ofrece crear una ficha marcada sin publicarla. El panel y Productos enlazan a estas pantallas. Productos registra ajustes de inventario con cantidad y motivo, y consulta saldos e historial por variante; ya no envía un stock final para editarlo directamente. El detalle de orden administrativo presenta costo, origen y margen o una advertencia de costo incompleto/desconocido. El BFF `/api/admin/[...ruta]` reenvía `proveedores`, `compras` e `inventario` a Express; `informes` queda preparado para la fase siguiente. ESLint pasó sin errores, TypeScript pasó y el build con webpack terminó correctamente. El build predeterminado con Turbopack falla por la junction de `node_modules` fuera de la raíz del worktree.
+
 ## Páginas
 
 | URL | Función | Fuente `frontend/src/app/` |
@@ -18,7 +22,7 @@ Las rutas Next de API son `POST /api/auth/[modo]` (`login` o `registro`), `POST 
 
 `ApiError` conserva `codigo`, `itemsAfectados`, `camposInvalidos` y un resumen actualizado cuando llegan de Express. La función `reenviarAExpress` se usa desde BFF para enviar Bearer solo entre servidores y devolver la respuesta HTTP original con cuerpo, estado y tipo de contenido; el navegador sigue usando `apiFetchInterna`.
 
-El proxy administrativo Next mapea `/api/admin/ordenes` a la ruta administrativa de Express, conserva las rutas previas para otros módulos, responde 401/403 en JSON y reutiliza `reenviarAExpress` con respuestas `no-store`.
+El proxy administrativo Next mapea los prefijos `ordenes`, `proveedores`, `compras`, `inventario` e `informes` a las rutas administrativas de Express, conserva las rutas previas para otros módulos, responde 401/403 en JSON y reutiliza `reenviarAExpress` con respuestas `no-store`.
 
 Las páginas sin directiva `"use client"` son Server Components de Next: por ejemplo `page.tsx` de inicio consulta la API durante el render. Los componentes con esa directiva se ejecutan en el cliente para interacción: `Header`, `ProductGrid`, `ProductVariants`, `CarritoPanel`, `AuthForm`, `CuentaPanel`, `AdminProductos`, `AdminImagenes` y `AdminClientes`. Fuentes: `frontend/src/app/page.tsx`, `frontend/src/components/Header.tsx`, `frontend/src/components/ProductGrid.tsx`, `frontend/src/components/ProductVariants.tsx`, `frontend/src/components/CarritoPanel.tsx`, `frontend/src/components/AuthForm.tsx`, `frontend/src/components/CuentaPanel.tsx`, `frontend/src/components/AdminProductos.tsx`, `frontend/src/components/AdminImagenes.tsx`, `frontend/src/components/AdminClientes.tsx`.
 
@@ -33,3 +37,7 @@ Los contratos TypeScript están en `frontend/src/types/`: `carrito.ts`, `catalog
 `/admin` enlaza a `/admin/ordenes`. Allí el administrador filtra/lista órdenes, ve detalle y eventos con el nombre actual de cada actor cuando está disponible, confirma pagos manuales, avanza estados y cancela con motivo y decisión de stock para pagadas. Los importes de envío siguen sin cotizar; la constancia externa y la devolución pendiente se muestran sin afirmar cobro ni reembolso automático. Los fallos de acciones permiten consultar el estado y reintentar. Fuente: `frontend/src/components/AdminOrdenes.tsx`, `frontend/src/app/admin/ordenes/page.tsx`.
 
 Las vistas administrativas con pendientes abiertos consultan lista/detalle cada 60 segundos mientras hay conexión. Muestran «Reserva vencida; cancelación en proceso» antes de que el barrido registre `cancelada_vencimiento`, y luego la fecha real de cancelación. Las respuestas se piden sin caché por el BFF.
+
+En el código local de la funcionalidad 003, `/admin/compras` permite revisar partidas confirmadas y registrar correcciones, anulaciones y devoluciones a proveedor con motivo y clave de operación. `/admin/ordenes` permite aceptar unidades devueltas, registrar pagos de reintegro, cerrar saldo pendiente y clasificar recepciones aptas o dañadas. La interfaz indica que aceptar la devolución no aumenta stock vendible: solo lo hace una recepción apta. Si una respuesta falla conserva la clave para el reintento. Estos formularios pasaron lint y build, pero no se ejecutaron pruebas de interacción por indicación del usuario.
+
+La sección de informes de `/admin/compras` consulta período principal y comparación opcional, conserva filtros al fallar y muestra vacío, fallo recuperable o acceso denegado de forma separada. Un enlace «Historial» desde cada producto lleva el filtro al informe; el detalle separa precios regulares publicados de importes de venta efectivamente cobrados y señala promoción ausente y costo desconocido. El BFF enruta esa consulta a la API administrativa.
