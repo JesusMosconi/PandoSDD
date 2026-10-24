@@ -59,9 +59,11 @@ El proxy Next `/api/admin/[...ruta]` reenvía `ordenes`, `proveedores`, `compras
 | | POST `/img-producto` | A | V: `url`, `orden`, `productoId` |
 | | PUT `/img-producto/:id` | A | V: `url`, `orden` |
 | | DELETE `/img-producto/:id` | A | Borrado de fila |
-| `catalogo-inicio.routes.js` | GET `/catalogo-inicio`, GET `/catalogo-inicio/:id` | P | Incluye solo selecciones de productos con `activo=true` y `web=true`, imagen y variantes activas con `stockDisponible>0`; 404 por id ausente o producto no visible |
-| | POST `/catalogo-inicio`, PUT `/catalogo-inicio/:id` | A | V: `orden`, `productoId` Number; escribe solo estos campos |
-| | DELETE `/catalogo-inicio/:id` | A | Borrado de fila |
+| `catalogo-inicio.routes.js` | GET `/catalogo-inicio`, GET `/catalogo-inicio/:id` | P | Incluye solo selecciones activas de productos con `activo=true` y `web=true`, imagen y variantes activas con `stockDisponible>0`; orden estable; 404 por id ausente o no visible |
+| | GET `/catalogo-inicio/seleccion` | A | Devuelve todas las selecciones activas, incluidas las de productos no públicos, con motivos de ocultamiento |
+| | PUT `/catalogo-inicio/seleccion` | A | Recibe de cero a cinco `productoIds` distintos en orden; reemplaza atómicamente la selección, con bajas lógicas y reactivaciones |
+| | POST `/catalogo-inicio`, PUT `/catalogo-inicio/:id` | A | V: `orden`, `productoId` Number entero positivo; aplican cupo, unicidad y orden |
+| | DELETE `/catalogo-inicio/:id` | A | Desactiva la selección y compacta el orden de las restantes |
 | `contenido-inicio.routes.js` | GET `/contenido-inicio`, GET `/contenido-inicio/:id` | P | 404 por id ausente |
 | | POST `/contenido-inicio`, PUT `/contenido-inicio/:id` | A | V: `seccionNombre`; campos de texto/imagen opcionales |
 | | DELETE `/contenido-inicio/:id` | A | Borrado de fila |
