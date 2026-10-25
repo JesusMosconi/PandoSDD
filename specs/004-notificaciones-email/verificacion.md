@@ -79,6 +79,21 @@ Backend local en el puerto 3000 con la misma base (autorizada, ver arriba) y una
 
 El `motivo` del 403 que devuelve Resend incluye completo el correo dueño de la cuenta, y se registra tal cual en la consola. No es un dato de clientes, pero conviene tenerlo en cuenta al compartir logs.
 
+## Integración de `main`/`master` (2026-10-25)
+
+Antes de los PR se integró en cada rama 004, con un merge sin conflictos, lo que entró en la rama principal: la feature `004-seleccion-catalogo-inicio` (otra feature con el mismo número; las carpetas de spec son distintas y Spec-Kit busca por el nombre completo) y los plazos de confirmación de checkout e ingresos. Ningún archivo de código coincide con los de esta feature; en PandoSDD se combinaron solos `03-api-backend.md`, `04-frontend.md` y `06-flujos-de-negocio.md`.
+
+| Comprobación sobre el código combinado | Resultado |
+|---|---|
+| `npx prisma generate` (el esquema de `main` agrega `CatalogoInicio.activo` y un índice único) | OK |
+| `npm.cmd test` sin base de prueba | 69 tests: 23 pasan, 12 omitidas, 34 fallan. Los 34 fallos son la aserción de host de `exigirBasePrueba()`; la omitida nueva es `catalogo-inicio.test.js`. Sin regresiones respecto de la corrida anterior. |
+| `test/notificaciones.test.js` | 12 pasan, 0 fallan. |
+| Copia de T021 (misma base y autorización que arriba) | 4 pasan, 0 fallan; 0 restos. |
+| Arranque del servidor | Levanta; `POST /api/suscripciones/baja` sin token → 400. |
+| `npm run lint` / `npm run build` (frontend) | 0 errores (9 avisos heredados) / compila, con `/admin/catalogo-inicio` y `/newsletter/baja`. |
+
+La migración `20261023_catalogo_inicio_seleccion` pertenece a la otra feature 004 y debe estar aplicada en producción al desplegar `main`.
+
 ## Pendiente de verificar
 
 - **T021 en la base de prueba aislada** con `npm.cmd test` y `exigirBasePrueba()`, junto con la suite completa de 002/003, cuando vuelva a estar disponible la rama de prueba de Neon.
