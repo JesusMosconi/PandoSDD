@@ -32,7 +32,7 @@ La tabla siguiente conserva el inventario de los 23 modelos de la base 002; los 
 | `Color` | `nombre String`, `hex String` | `tallesProducto TalleProducto[]` |
 | `TalleProducto` | `stock Int`, `estado String`, `productoId Int`, `talleId Int`, `colorId Int` | `producto Producto`, `talle Talle`, `color Color`, `itemsCarrito ItemCarrito[]`, `detallesOrden DetalleOrden[]`, `reservasStock ReservaStock[]`; `@@unique([productoId, talleId, colorId])` |
 | `ImgProducto` | `url String`, `orden Int`, `productoId Int` | `producto Producto`; `url @unique` |
-| `CatalogoInicio` | `orden Int`, `productoId Int` | `producto Producto` |
+| `CatalogoInicio` | `orden Int`, `activo Boolean @default(true)`, `productoId Int @unique` | `producto Producto`; hasta cinco selecciones activas, ordenadas, incluidas las de productos no públicos. Quitar desactiva y volver a elegir reactiva la misma fila. |
 | `Carrito` | `estado String @default("activo")`, `actualizado DateTime @updatedAt`, `canal String`, `usuarioId Int` | `usuario Usuario`, `items ItemCarrito[]`, `orden Orden?`, `ventas Venta[]` |
 | `ItemCarrito` | `cantidad Int`, `precioUnitario Decimal`, `talleProductoId Int?`, `carritoId Int`, `productoImprovisadoId Int?` | `talleProducto TalleProducto?`, `carrito Carrito`, `productoImprovisado ProductoImprovisado?` |
 | `ProductoImprovisado` | `nombre String`, `talle String?`, `categoria String?`, `color String?`, `precio Decimal` | `items ItemCarrito[]` |
