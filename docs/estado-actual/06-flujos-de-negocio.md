@@ -1,5 +1,19 @@
 # Flujos de negocio
 
+## Notificaciones por correo 004 en la rama de trabajo
+
+Tres correos transaccionales, disparados después de guardar y sin hacer esperar la respuesta:
+
+- **Bienvenida**: tras un registro exitoso, con enlaces a `/categorias` y `/cuenta`.
+- **Contraseña cambiada**: tras un cambio exitoso, con fecha y hora de Córdoba y «Si no fuiste vos, contactanos» (`EMAIL_CONTACTO`). No incluye enlaces.
+- **Suscripción**: tras una suscripción nueva o una reactivación, con un enlace personal de baja.
+
+Si el proveedor falla, tarda o no está configurado, la acción principal responde igual y la falla solo se registra en consola, con el destinatario enmascarado. No hay reintentos ni historial de envíos.
+
+Ciclo de la suscripción: un correo nuevo crea una suscripción activa; uno activo responde 409 sin correo; uno inactivo se reactiva y recibe el agradecimiento. La baja desde el correo pide confirmación en `/newsletter/baja`, es lógica e idempotente, y un enlace alterado no modifica nada. La baja de administración (`DELETE /suscripciones/:id`) no envía correo.
+
+Registro y suscripción guardan el correo en minúsculas y comparan sin distinguir mayúsculas; los datos anteriores no se migran. Sin dominio verificado en Resend, solo se entregan correos al dueño de la cuenta del proveedor. Fuentes: `backend/src/services/notificaciones.js`, `backend/src/services/suscripciones.js`, `backend/src/routes/usuarios.routes.js`, `backend/src/routes/suscripcion.routes.js`, `frontend/src/app/newsletter/baja/page.tsx`.
+
 ## Compras y FIFO 003 en la rama de trabajo
 
 Administración puede mantener proveedores con baja lógica y preparar ingresos con líneas y gastos. El backend calcula los importes y exige una huella de resumen vigente para confirmar. La recepción confirmada crea partidas y movimientos de entrada, y aumenta el stock físico una sola vez dentro de la transacción. Antes del corte global, solo admite variantes nuevas marcadas con inventario inicial cero, sin reservas previas y con stock físico conciliado. Con el estado global `activo`, exige que cada variante figure conciliada; una suspensión del inventario impide nuevas confirmaciones. La ficha creada desde Compras nace sin publicación web; su publicación exige al menos una partida de ingreso confirmada. La condición posterior al corte se probó en una base descartable con el código local; el código 003 no se desplegó.

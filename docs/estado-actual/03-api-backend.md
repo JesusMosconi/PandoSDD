@@ -1,5 +1,19 @@
 # API Express
 
+## Extensión 004 en la rama de trabajo: notificaciones por correo
+
+Cambios locales en la rama `004-notificaciones-email`. Se probaron con tests unitarios y con solicitudes HTTP en los caminos que responden antes de consultar la base; la reactivación y la baja contra la base de prueba quedan pendientes (ver `specs/004-notificaciones-email/verificacion.md`).
+
+| Archivo | Método y ruta | Cambio |
+|---|---|---|
+| `usuarios.routes.js` | POST `/usuarios/registro` | `asyncHandler`; tipos validados con `validateBody` (una contraseña numérica ahora da 400); correo normalizado a minúsculas con formato validado (400 «Ingresá un correo electrónico válido»); duplicado buscado sin distinguir mayúsculas y carrera `P2002` → 409. Tras el 201 dispara el correo de bienvenida sin esperarlo. |
+| `usuarios.routes.js` | POST `/usuarios/login` | Busca primero el correo normalizado y después el valor recibido, para mantener el acceso de cuentas anteriores guardadas con mayúsculas. Sin cambios de contrato. |
+| `usuarios.routes.js` | PUT `/usuarios/cambiar-password` | `asyncHandler`; mismos mensajes. Tras el 200 dispara el aviso de contraseña cambiada sin esperarlo. Un error inesperado responde el 500 genérico del manejador global. |
+| `suscripcion.routes.js` | POST `/suscripciones` | Correo normalizado y validado; si existe inactivo, se reactiva con nueva `fechaSuscripcion` (200); si está activo, 409 como antes. Tras el 200 dispara el agradecimiento con enlace de baja. Lógica en `services/suscripciones.js`. |
+| `suscripcion.routes.js` | POST `/suscripciones/baja` (nueva, pública) | Body `{ token }`. Token HMAC firmado con `EMAIL_TOKEN_SECRET` (`utils/token-baja.js`); válido → baja lógica idempotente, 200 «Tu suscripción fue dada de baja»; inválido → 400 «El enlace de baja no es válido»; sin secreto → 503. Excepción justificada a `verificarToken` (ver `08-deuda-y-riesgos.md`). |
+
+El envío lo hace `services/email.js` con la API HTTP de Resend y el `fetch` nativo, sin dependencias nuevas. Nunca rechaza ni altera la respuesta de la ruta; sin `RESEND_API_KEY` solo registra en consola. Las plantillas están en `services/plantillas-email.js` y las tres notificaciones en `services/notificaciones.js`. Fuentes: archivos citados.
+
 ## Extensión 003 en la rama de trabajo
 
 Las rutas siguientes están montadas localmente y requieren `verificarToken` y `esAdmin`. Todavía no cuentan con prueba HTTP de integración contra `Prueba`.
