@@ -1,0 +1,35 @@
+# Auditoría de migración 005
+
+## Bases de trabajo verificadas (2026-10-24)
+
+- Raíz `codex/005-gestionar-drops`: avance directo a `origin/master` `c5a1739`. Los cambios previos en docs 02/06 y dos diferencias de spec 004 están resguardados en `git stash` `pre-005-root-sync-20261024` para integrarlos sin pisar el remoto. Las specs 005 y los otros cambios previos permanecen en el árbol.
+- Backend `codex/005-gestionar-drops`: avance directo a `origin/main` `b0cde91`. Siguen intactas las modificaciones locales ajenas en `src/jobs/activar-corte-inventario.js` y `src/jobs/incorporar-existencias.js`.
+- Frontend `codex/005-gestionar-drops`: avance directo a `origin/master` `5c3a8c8`, árbol inicialmente limpio. Las tres bases contienen la selección del catálogo de Inicio ya publicada.
+
+## Inventario estático
+
+`Coleccion` tiene `id`, `nombre`, `imagenUrl`, `fechaLanzamiento`, `numeroDrop`, `contadorActivo` (predeterminado `true`), `fechaCreado` y relación con productos. `ContenidoInicio` conserva textos e imagen para `hero`; no es un registro singleton garantizado. Los consumidores de `contadorActivo` son las mutaciones heredadas de `backend/src/routes/colecciones.routes.js`, `frontend/src/app/page.tsx` y `frontend/src/app/categorias/page.tsx`. Inicio también lee `ContenidoInicio.hero` para título y botón; Categorías lista por fecha de creación. La API heredada permite borrado físico de colecciones, a cerrar en 005.
+
+Migraciones versionadas presentes: `20260629151650_init`, `20260728120000_add_categoria_coleccion_imagen_url`, `20260728203102_add_numero_drop_fecha_lanzamiento`, `20260729190000_add_imagen_nosotros`, `20260827120000_add_usuario_activo`, `20261011_checkout_ordenes`, `20261018_asignacion_partida_fifo`, `20261018_compras_proveedores_base`, `20261019_correcciones_devoluciones`, `20261019_corte_inventario_base`, `20261019_origen_recepcion_devolucion`, `20261019_vigencias_precio` y `20261023_catalogo_inicio_seleccion`.
+
+## Destino y decisión previa de esquema
+
+En Neon se creó `codex-005-gestionar-drops-20261024` (`br-raspy-night-acevy63o`) como rama de datos y esquema de `production` (`br-bitter-firefly-acgi1ey3`) del proyecto `PandoCba` (`frosty-surf-47961615`). La consulta de solo lectura previa a las migraciones en SQL Editor de esa rama devolvió base `neondb`, esquema `public`, las 13 migraciones versionadas del inventario estático aplicadas y ninguna revertida o incompleta. En ese momento estaba preparada `20261024_gestion_drops`; el backfill se preparó después del inventario. No se consultó ni alteró producción.
+
+Inventario de `Coleccion` en la rama aislada: una fila, `id=1`, `nombre=Drop`, `numeroDrop=NULL`, `fechaLanzamiento=2026-11-18 00:00:00`, `contadorActivo=true`, portada presente, cuatro productos asociados y tres con `activo=true` y `web=true`. Es una fecha futura al momento de esta auditoría; `contadorActivo` no la convierte en activa. La consulta de `ContenidoInicio` para `seccionNombre='hero'` devolvió cero filas. Las cadenas visibles de Inicio provienen del fallback actual en `frontend/src/app/page.tsx`: `NO SIGAS TENDENCIAS.\nCREALAS.` y `IR A LA COLECCIÓN`. La consulta de stock efectivo restando reservas vigentes identificó tres productos públicos disponibles (ids 2, 3 y 5, con 2, 3 y 4 variantes disponibles respectivamente); el cuarto producto asociado (id 15) está inactivo y sin variantes disponibles.
+
+Mapeo para la rama aislada: conservar la fila `id=1`, portada y fecha, sin fecha de activación ni cierre; completar `tituloInicio` y `textoBotonInicio` con las cadenas ya presentadas públicamente por el frontend para que continúe anunciándose como futuro. La segunda migración versionada condiciona esa actualización a la identidad y fecha inventariadas. El 2026-10-24 el usuario proporcionó la imagen final de marca; `20261024_portada_sin_drops` la configura en el singleton sin reemplazar una imagen existente. Aplicada y verificada solo en la rama aislada `br-raspy-night-acevy63o`: `imagenUrl=/drops/sin-drops.png`, título nulo y migración finalizada con checksum coincidente. Para producción se deberá repetir el inventario inmediatamente antes de aplicar cualquier migración; este registro de la rama no garantiza que producción siga idéntica.
+
+## Aplicación aislada
+
+En SQL Editor de la rama `br-raspy-night-acevy63o`, base `neondb` y esquema `public`, se aplicaron en transacciones separadas el SQL exacto de `20261024_gestion_drops` y el backfill condicionado de `20261024_gestion_drops_heredados`; cada transacción registró su nombre y SHA-256 de `migration.sql` en `_prisma_migrations`. El editor mostró `ALTER`/`CREATE`/`INSERT 1`/`COMMIT` para la primera; la segunda tuvo un aviso de interfaz al presentar resultados, por lo que se verificó con una consulta nueva: **2 migraciones 005 finalizadas, columna `fechaActivacion` presente, y el registro 1 con título y botón esperados**. La producción no recibió estas escrituras.
+
+La spec y el plan autorizan campos aditivos de ciclo de vida en `Coleccion` y una configuración de marca separada. La migración de esquema será nueva, sin cambiar `contadorActivo` ni `ContenidoInicio.hero` y sin backfill supuesto. Es conservadora porque el valor predeterminado heredado de `contadorActivo` no prueba activación. El mapeo por registro y el contenido comercial de marca se definirán con inventario real de la rama aislada antes de aplicar la migración o habilitar la nueva lectura pública.
+
+## Aplicación en producción — 2026-10-26
+
+Con autorización del usuario, se verificó en Neon Console el proyecto `PandoCba` (`frosty-surf-47961615`), rama predeterminada `production` (`br-bitter-firefly-acgi1ey3`), base `neondb`, esquema `public` y endpoint primario `ep-raspy-breeze-aclw045d`. Había 13 migraciones aplicadas, ninguna incompleta y ninguna 005. La única colección seguía siendo `id=1`, `nombre=Drop`, lanzamiento `2026-11-18 00:00:00`, portada presente, cuatro productos asociados y tres públicos. No había `ContenidoInicio.hero`, columnas 005 ni tabla `ConfiguracionPortadaInicio`.
+
+Antes de escribir en producción se creó la rama de respaldo `backup-pre-005-production-20261026` (`br-super-hill-ac7ch14o`), hija de `production`, con datos y esquema y vencimiento `Never`. La lectura en esa rama confirmó `neondb/public`, 13 migraciones, una colección, 16 productos, 32 variantes, ocho órdenes y el drop 1 esperado. Es una copia de Neon; no se ensayó una restauración.
+
+Se aplicaron las tres migraciones 005 en orden, cada una en una transacción separada, registrando en `_prisma_migrations` su nombre y SHA-256 del archivo `migration.sql`. La segunda migración actualizó el único drop heredado con los textos previstos; un aviso de interfaz se resolvió mediante consulta independiente que confirmó el registro aplicado y ambos textos. La comprobación final mostró 16 migraciones aplicadas, cero incompletas, tres filas 005 con checksums coincidentes, siete columnas nuevas de `Coleccion`, `ConfiguracionPortadaInicio.imagenUrl=/drops/sin-drops.png` y los mismos conteos de una colección, 16 productos, 32 variantes y ocho órdenes. No se desplegó código ni se ejecutaron seeds.
