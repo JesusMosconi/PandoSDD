@@ -58,7 +58,7 @@ El proxy Next `/api/admin/[...ruta]` reenvía `ordenes`, `proveedores`, `compras
 | `categorias.routes.js` | GET `/categorias`, GET `/categorias/:id` | P | 404 si falta id |
 | | POST `/categorias`, PUT `/categorias/:id`, DELETE `/categorias/:id` | A | Usa `nombre`, `imagenUrl`; DELETE físico; sin `validateBody` |
 | | POST/DELETE `/categorias/:id/imagen` | A | POST requiere archivo `imagen`; 404/400; guarda/quita URL |
-| `colecciones.routes.js` | GET `/colecciones`, GET `/colecciones/:id` | P | 404 si falta id |
+| `colecciones.routes.js` | GET `/colecciones`, GET `/colecciones/:id` | P | El detalle devuelve 404 si no existe o no tiene activación registrada |
 | | POST `/colecciones`, PUT `/colecciones/:id`, DELETE `/colecciones/:id` | A | Usa `nombre`, `imagenUrl`, `fechaLanzamiento`, `numeroDrop`, `contadorActivo`; sin `validateBody` |
 | | POST/DELETE `/colecciones/:id/imagen` | A | POST requiere archivo `imagen`; 404/400 |
 | `productos.routes.js` | GET `/productos` | P; A si `admin=true` | Filtra `categoriaId`, `coleccionId`, `talle` por disponibilidad efectiva y `orden`; sin admin exige `activo=true` y `web=true` y solo expone variantes activas con `stockDisponible>0`; administración conserva stock físico y disponible |
@@ -97,3 +97,7 @@ El proxy Next `/api/admin/[...ruta]` reenvía `ordenes`, `proveedores`, `compras
 | | DELETE `/carrito/items/:id` | U | Exige pertenencia del ítem al usuario; respuesta incluye `disponible` por ítem restante |
 
 `asyncHandler` entrega rechazos al middleware de error. El manejador global responde 400 para errores Multer/formato y JSON inválido, y 500 genérico para el resto; varios handlers de `usuarios.routes.js` capturan sus errores localmente. Fuentes: `backend/src/utils/async-handler.js`, `backend/src/index.js`, `backend/src/routes/usuarios.routes.js`.
+
+## Drops 005 (rama de implementación)
+
+`GET /api/drops/inicio` responde `activo`, `futuro` o `marca`; `GET /api/drops/categorias` devuelve destacado y hasta tres colecciones lanzadas. Las lecturas no escriben. `backend/src/jobs/activar-drops.js` evalúa al arranque y cada 30 segundos con bloqueo transaccional para activar lanzamientos elegibles y cerrar el reemplazado. `GET/POST/PUT/DELETE /api/admin/drops`, la finalización, las imágenes y la configuración de marca exigen token y rol administrador. La disponibilidad descuenta reservas efectivas. Las mutaciones heredadas de `/colecciones` comparten validaciones y hacen baja lógica. El listado de colecciones sigue disponible para administración; el detalle público devuelve 404 hasta que el drop tenga `fechaActivacion`. La misma condición oculta sus productos en lecturas públicas de catálogo, variantes e imágenes, y bloquea su agregado al carrito y la confirmación de checkout. La disponibilidad interna conserva los productos preparados para decidir la activación. La ruta pública de marca responde 503 mientras falte imagen. Los resultados de las verificaciones aisladas están en `specs/005-gestionar-drops/verificacion.md`.
