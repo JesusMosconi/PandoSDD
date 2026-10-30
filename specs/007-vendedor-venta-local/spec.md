@@ -2,7 +2,7 @@
 
 **Feature Branch**: `007-vendedor-venta-local`
 **Created**: 2026-10-29
-**Status**: Borrador para revisión; requiere aprobación antes de `plan`
+**Status**: Aprobada en conversación el 2026-10-29; el plan y la migración requieren revisión explícita antes de implementar
 **Input**: Nuevo rol vendedor con pantalla de venta para vender en el local físico desde la misma aplicación. Algunos productos se venden solo en el local, otros solo en la web y otros en ambos canales. Incluye caja diaria y la separación de las ventas por canal (web o local) y por medio de pago.
 
 ## Clarifications
