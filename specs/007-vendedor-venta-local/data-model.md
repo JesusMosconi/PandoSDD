@@ -24,7 +24,8 @@ Regla compartida nueva en `utils/visibilidad-producto.js`:
 | Campo | Tipo | Regla |
 | --- | --- | --- |
 | `canal` | `String @default("web")` | `"web"` o `"local"`. Las filas existentes quedan en `"web"`. |
-| `dniCliente` | `String?` | Obligatorio si `canal="local"`. Solo dígitos, entre 7 y 8. |
+| `nombreCliente` | `String?` | Opcional. Recortado, hasta 100 caracteres. *(Reemplaza a `dniCliente`, quitado el 2026-11-02.)* |
+| `telefonoCliente` | `String?` | Opcional. Solo dígitos con `+` inicial opcional, entre 6 y 20 dígitos. |
 | `cajaId` | `Int?` → `Caja` | Obligatorio si `canal="local"`. `onDelete: Restrict`. |
 | `numeroComprobante` | `Int? @unique` | Solo en el canal local. Correlativo: `MAX+1` bajo el bloqueo de la caja. |
 | `metodoPago` | existente | Web: `"manual"`. Local: `"efectivo"`, `"transferencia"`, `"debito"` o `"credito"`. |
@@ -32,7 +33,7 @@ Regla compartida nueva en `utils/visibilidad-producto.js`:
 
 Índices: `@@index([canal, pagoConfirmadoEn])` y `@@index([cajaId])`.
 
-CHECK en SQL: `("canal" = 'web') OR ("dniCliente" IS NOT NULL AND "cajaId" IS NOT NULL AND "numeroComprobante" IS NOT NULL)`.
+CHECK en SQL: `("canal" = 'web') OR ("cajaId" IS NOT NULL AND "numeroComprobante" IS NOT NULL)` (desde la migración `20261102_venta_rapida_cliente_opcional`; antes exigía también el DNI).
 
 Valores de una orden del local:
 
@@ -48,7 +49,8 @@ Valores de una orden del local:
 
 ### Carrito
 
-- `canal` existente: `"web"` (como hasta ahora) o `"local"`. El carrito local no vence a las 24 horas.
+- `canal` existente: `"web"` (como hasta ahora) o `"local"`. El carrito local no vence a las 24 horas. Pasa a `expirado` al cerrarse la caja (2026-11-04).
+- `ItemCarrito.concepto String?` (2026-11-02): marca una línea de venta rápida. Lleva `concepto` y `precioUnitario` (importe ingresado), sin `talleProductoId` ni `productoImprovisadoId` (CHECK en SQL). Solo la crea el punto de venta.
 - Las búsquedas del carrito web deben filtrar `canal: "web"`.
 
 ### EventoOrden
@@ -99,7 +101,12 @@ Valores de una orden del local:
 | La variante está activa y la cantidad agrupada no supera el disponible | `variante_inactiva` / `stock_insuficiente` |
 | No hay productos improvisados | `producto_improvisado` |
 | El inventario no está suspendido y las variantes están conciliadas si el corte está activo | `INVENTARIO_SUSPENDIDO` / `VARIANTE_SIN_CORTE` / `RESERVA_SIN_PARTIDA` |
-| El DNI tiene 7 u 8 dígitos tras normalizar | `DNI_INVALIDO` |
+| El nombre tiene hasta 100 caracteres y el teléfono, de 6 a 20 dígitos (ambos opcionales) | `CLIENTE_INVALIDO` (con `campo`) |
+| La venta rápida tiene importe mayor que cero con hasta dos decimales y concepto de hasta 80 caracteres | `VENTA_RAPIDA_INVALIDA` |
 | El medio de pago es válido | `MEDIO_PAGO_INVALIDO` |
 | La huella del resumen está vigente | `RESUMEN_CAMBIO` (devuelve el resumen nuevo) |
 | La clave repetida tiene otra intención | `INTENCION_EN_CONFLICTO` |
+
+## Líneas de venta rápida en `DetalleOrden` (2026-11-02)
+
+Se registran después de las líneas de catálogo, con `productoId` y `talleProductoId` nulos, `nombreProducto` = concepto, `talle` y `color` vacíos, `precioUnitario` = importe ingresado e `importeLinea` = importe × cantidad. No generan `ReservaStock` ni `AsignacionPartida`, así que no mueven stock y los informes las cuentan como venta sin costo conocido.

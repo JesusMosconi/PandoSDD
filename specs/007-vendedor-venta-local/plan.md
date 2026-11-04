@@ -13,7 +13,8 @@ Se agregan:
 - `Producto.local`, independiente de `web`.
 - El rol `vendedor`, con una única cuenta activa.
 - La entidad `Caja`, con una sola abierta a la vez.
-- DNI, caja y número de comprobante en `Orden`.
+- Caja y número de comprobante en `Orden`, más nombre y teléfono opcionales del cliente (el DNI se quitó el 2026-11-02).
+- La venta rápida: líneas con concepto e importe ingresados por el vendedor, sin stock (2026-11-02).
 
 El frontend suma un punto de venta, la caja, el historial con comprobante imprimible y una vista administrativa de ventas por canal y medio, todo detrás de un BFF propio. La base de comparación es `main`/`master` con la feature 005 integrada.
 
@@ -53,12 +54,14 @@ El frontend suma un punto de venta, la caja, el historial con comprobante imprim
 | I. Separación | Reglas, importes, stock y caja en Express. Next solo presenta; las escrituras del navegador pasan por el BFF `/api/vendedor/[...ruta]` y el BFF administrativo existente. |
 | II. Datos | Migración nueva y aditiva con nombres en español. Baja lógica del vendedor (`activo=false`). Ninguna baja física. Los productos existentes quedan con `local=true`. |
 | III. API | Handlers con `asyncHandler` y errores en español. Datos Prisma armados con campos explícitos. Todas las rutas nuevas usan `verificarToken`, más el nuevo `esVendedor` (rol `vendedor` o `admin`, consultado en la base) o `esAdmin`. |
-| IV. Seguridad | JWT en la cookie httpOnly existente. Precio vigente calculado en el servidor, con huella de resumen. El DNI se normaliza a dígitos. No hay secretos nuevos. |
+| IV. Seguridad | JWT en la cookie httpOnly existente. Precio vigente calculado en el servidor, con huella de resumen. La venta rápida es la excepción justificada en Complexity Tracking: el servidor valida el importe. El teléfono se normaliza a dígitos y el nombre se recorta. No hay secretos nuevos. |
 | V. Frontend | Server Components para páginas y comprobante; `"use client"` solo en el punto de venta y en los formularios de caja. Tipos en `src/types/` y solicitudes por `apiFetchInterna`. Consultar `node_modules/next/dist/docs/` ante APIs dudosas de Next 16. |
 | VI. Calidad | Tests de backend para venta, caja, roles y concurrencia. La suite existente (002/003/005) debe seguir pasando. Lint y build del frontend. Actualizar `docs/estado-actual/`. |
 | VII. Secuencia | Spec commiteada; este plan y la migración requieren revisión. Después vienen `tasks.md` y la implementación. |
 
 **Reevaluación tras Phase 1**: el modelo y los contratos respetan los principios. No se propone ninguna excepción.
+
+**Reevaluación 2026-11-02**: la venta rápida introduce un importe ingresado por el vendedor (principio IV). Se justifica abajo. La baja de la columna `dniCliente` es una migración nueva aprobada; la migración aplicada no se edita.
 
 ## Project Structure
 
@@ -81,7 +84,7 @@ specs/007-vendedor-venta-local/
 ```text
 backend/  (PandoCbaV2)
 ├── prisma/
-│   ├── schema.prisma                         # Producto.local, Orden (canal, dniCliente, cajaId, numeroComprobante), Caja
+│   ├── schema.prisma                         # Producto.local, Orden (canal, nombreCliente, telefonoCliente, cajaId, numeroComprobante), ItemCarrito.concepto, Caja
 │   └── migrations/20261029_vendedor_venta_local/migration.sql   # incluye índices únicos parciales
 ├── src/
 │   ├── index.js                              # montar vendedor.routes y admin-ventas.routes
@@ -155,4 +158,17 @@ PandoSDD/
 
 ## Complexity Tracking
 
-Sin violaciones a justificar.
+| Violación | Por qué se necesita | Alternativa más simple descartada |
+| --- | --- | --- |
+| Importe ingresado por el vendedor en la venta rápida (principio IV: los precios se calculan en el backend) | El local vende accesorios y artículos que no se cargan en el catálogo; cargarlos uno por uno frena la venta y no aporta control de stock. | Botones con precio fijo administrados por el admin: se descartó a pedido del responsable (2026-11-02). Cargar cada accesorio como producto: demasiado lento para el mostrador. |
+
+Mitigaciones: solo el vendedor o el admin autenticados agregan la línea; el servidor valida el importe (mayor que cero, hasta dos decimales, tope de 12 dígitos enteros) y el concepto; la línea queda en el comprobante, la caja y los informes con su importe, y como venta sin costo conocido, de modo que el margen del período queda indeterminado en vez de inflarse.
+
+## Cambio 2026-11-02: venta rápida y datos opcionales del cliente
+
+Aprobado en conversación por el responsable tras probar la primera versión con `npm run dev`.
+
+- **Migración nueva** `20261102_venta_rapida_cliente_opcional` (la `20261029` ya está aplicada en `Prueba` y no se edita): quita el CHECK `Orden_datos_local_check` y la columna `dniCliente`; agrega `nombreCliente` y `telefonoCliente` opcionales; recrea el CHECK exigiendo solo caja y comprobante en el canal local; agrega `ItemCarrito.concepto` con un CHECK que impide combinarlo con variante o producto improvisado. Se aplica primero en `Prueba`.
+- **Venta rápida**: `POST /vendedor/venta/rapida` agrega un `ItemCarrito` con `concepto` y `precioUnitario` validados, sin variante. El resumen la trata como línea disponible sin motivos de bloqueo, con el importe guardado como precio vigente. En la confirmación, las líneas de catálogo pasan por `crearDetallesYReservas` y las rápidas se registran después como `DetalleOrden` sin producto ni variante (`talle` y `color` vacíos), sin reserva ni asignación FIFO. Si la venta no tiene ítems de catálogo, no se toma el estado del corte ni se bloquean variantes.
+- **Cliente**: la confirmación acepta `nombreCliente` y `telefonoCliente` opcionales (nombre recortado, hasta 100 caracteres; teléfono normalizado a dígitos con `+` opcional, 6 a 20 dígitos) y los incluye en la huella de la solicitud. El historial busca por número de comprobante, teléfono o nombre.
+- **Fuera de alcance**: la devolución de una línea de venta rápida (no tiene asignaciones de inventario).

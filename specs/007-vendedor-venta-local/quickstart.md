@@ -36,9 +36,9 @@ Resultados esperados:
 3. **Vendedor**: inicia sesión y llega a `/vendedor`. Intenta entrar a `/admin` y lo redirige; intenta entrar a `/checkout` y lo rechaza (SC-006).
 4. **Vendedor**: sin caja abierta, la confirmación está bloqueada con el aviso «Abrí la caja». Abre la caja con $10.000.
 5. **Vendedor**: busca y ve A y B, pero no C (SC-007). Confirma que la tienda web no muestra B.
-6. **Vendedor**: arma 2 × A con DNI `30.123.456` y medio efectivo. Confirma, ve el comprobante n.º N y lo imprime. Mide el tiempo de una venta de 3 ítems (SC-001, menos de 90 s).
-7. **Vendedor**: registra una venta con débito y luego intenta una con DNI `123`, que se rechaza.
-8. **Vendedor**: en Ventas busca por DNI y reimprime el comprobante con los mismos datos.
+6. **Vendedor**: arma 2 × A, agrega una venta rápida «Pulsera» de $3.000 (dos toques más el importe), carga el nombre `Ana` y el teléfono `351 555-1234` (opcionales) y elige efectivo. Confirma, ve el comprobante n.º N y lo imprime. Mide el tiempo de una venta de 3 ítems (SC-001, menos de 90 s).
+7. **Vendedor**: registra una venta con débito sin datos del cliente, que se confirma, y luego intenta una con teléfono `12`, que se rechaza.
+8. **Vendedor**: en Ventas busca por nombre o teléfono y reimprime el comprobante con los mismos datos.
 9. **Vendedor**: cierra la caja declarando el efectivo contado y verifica el esperado, la diferencia y los totales por medio. Con la caja cerrada, una nueva venta pide abrir caja.
 10. **Admin**: en `/admin/ventas` ve el período separado web/local y por medio. En Órdenes filtra por canal local. Ve la caja cerrada en el historial.
 11. **Admin**: registra la devolución de una venta del local con el flujo existente y verifica que el cierre de la caja no cambia.

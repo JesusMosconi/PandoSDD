@@ -38,7 +38,7 @@ Fecha: 2026-10-29. Fuentes: spec 007, constitution 1.0.0, código de `origin/mai
 
 ## R4. Carrito de la venta en curso
 
-- **Decision**: usar `Carrito` con `canal="local"` por usuario operador e `ItemCarrito` con `precioUnitario` como referencia. Sin vencimiento de 24 horas: la venta en curso persiste hasta confirmarse o vaciarse.
+- **Decision**: usar `Carrito` con `canal="local"` por usuario operador e `ItemCarrito` con `precioUnitario` como referencia. Sin vencimiento de 24 horas: la venta en curso persiste hasta confirmarse, vaciarse o cerrarse la caja. *(2026-11-04)* Al cerrar la caja, los carritos locales activos pasan a `expirado` en la misma transacción. El cierre bloquea primero esos carritos y después la caja, en el mismo orden que la confirmación, para que no se traben entre sí. No se vacía al cerrar sesión: no cubriría la sesión vencida ni el navegador cerrado, y un cierre de sesión por error perdería la venta.
 
   Hay que corregir las funciones del carrito web para que filtren `canal: "web"`:
   - `utils/carrito.js#obtenerOCrearCarrito`
@@ -100,7 +100,15 @@ Fecha: 2026-10-29. Fuentes: spec 007, constitution 1.0.0, código de `origin/mai
 - **Decision**: `Orden.usuarioId`, que es obligatorio, toma el usuario operador. Los eventos guardan `actorUsuarioId`. Ninguna pantalla, filtro ni informe expone esos datos para ventas del local (FR-030). El historial del vendedor lista por `canal="local"`, no por usuario.
 - **Rationale**: evita hacer opcional una FK usada por todo el circuito cliente y conserva la auditoría técnica.
 
-## R12. DNI
+## R12. Datos del cliente (revisada el 2026-11-02)
 
-- **Decision**: `Orden.dniCliente String?`, obligatorio cuando `canal="local"`. Se normaliza quitando puntos, espacios y guiones, y debe tener `^\d{7,8}$`.
-- **Rationale**: cubre la spec FR-013 sin crear una entidad Cliente.
+- **Decision original (2026-10-29)**: `Orden.dniCliente` obligatorio en el canal local.
+- **Decision vigente**: el DNI se quita. `Orden.nombreCliente` y `Orden.telefonoCliente`, ambos opcionales. El nombre se recorta y admite hasta 100 caracteres; el teléfono se normaliza quitando espacios, guiones, puntos y paréntesis, y debe cumplir `^\+?\d{6,20}$`.
+- **Rationale**: pedir el DNI frenaba la venta y muchos clientes compran una sola vez, así que el dato no se usaba. Nombre y teléfono sirven para un contacto puntual (por ejemplo, un cambio) sin frenar la venta.
+- **Alternatives considered**: dejar la columna del DNI opcional y sin uso (código y datos muertos); crear una entidad Cliente (fuera de alcance).
+
+## R13. Venta rápida
+
+- **Decision**: una línea de `ItemCarrito` con `concepto` y `precioUnitario` ingresados por el vendedor, sin variante, agregada con `POST /vendedor/venta/rapida`. En la confirmación se registra como `DetalleOrden` sin producto ni variante, sin reserva ni FIFO. Si la venta solo tiene líneas rápidas, no se toma el estado del corte.
+- **Rationale**: reutiliza el carrito, la huella, la idempotencia, la caja y el comprobante sin un circuito paralelo. Las líneas sin variante ya se contemplan en `DetalleOrden` (FK opcionales) y en los informes (venta sin origen).
+- **Alternatives considered**: reutilizar `ProductoImprovisado` (modelo heredado que la spec excluye y que crearía una fila por cada venta); botones con precio fijo (descartados por el responsable).

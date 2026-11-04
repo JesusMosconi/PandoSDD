@@ -2,7 +2,7 @@
 
 **Feature Branch**: `007-vendedor-venta-local`
 **Created**: 2026-10-29
-**Status**: Aprobada en conversación el 2026-10-29; el plan y la migración requieren revisión explícita antes de implementar
+**Status**: Aprobada en conversación el 2026-10-29; modificada y aprobada el 2026-11-02 (venta rápida y datos opcionales del cliente en lugar del DNI)
 **Input**: Nuevo rol vendedor con pantalla de venta para vender en el local físico desde la misma aplicación. Algunos productos se venden solo en el local, otros solo en la web y otros en ambos canales. Incluye caja diaria y la separación de las ventas por canal (web o local) y por medio de pago.
 
 ## Clarifications
@@ -12,31 +12,45 @@
 - Q: ¿Cómo se distingue un producto que se vende solo en el local de uno oculto? → A: Con una disponibilidad para el local independiente de la publicación web. Habrá productos disponibles solo en el local.
 - Q: ¿Puede el vendedor aplicar descuentos o modificar precios? → A: No. Nunca se planteó esa opción; se cobra el precio vigente del producto.
 - Q: ¿Cuántos medios de pago admite una venta? → A: Uno por venta, elegido en el momento. La pasarela de pagos la desarrolla otra persona en la feature 006; esta feature no la integra.
-- Q: ¿Qué datos del cliente se piden? → A: Solo el DNI. Se entrega un comprobante interno, no una factura fiscal.
+- Q: ¿Qué datos del cliente se piden? → A: Solo el DNI. Se entrega un comprobante interno, no una factura fiscal. *(Reemplazada el 2026-11-02, ver abajo.)*
 - Q: ¿El administrador también puede vender desde el punto de venta? → A: Sí.
 - Q: ¿La caja diaria entra en esta feature? → A: Sí. Además, las ventas deben poder separarse por canal (web o local) y por medio de pago.
 - Q: ¿Hay una caja única para el local o una por vendedor? → A: Una sola caja para el local.
 - Q: ¿Cuántos vendedores opera el sistema y se registra quién hizo cada venta? → A: Un solo vendedor, que es el responsable de abrir y cerrar la caja. Las ventas no se separan ni se informan por persona.
 
+### Session 2026-11-02
+
+- Q: ¿Qué datos del cliente se piden? → A: Ninguno obligatorio. Pedir el DNI frena la venta y muchos clientes compran una sola vez. Se piden, de forma opcional, el nombre y el teléfono. El DNI deja de guardarse.
+- Q: ¿Cómo se venden los artículos que no están cargados (accesorios, productos que no van a la web)? → A: Con una «venta rápida»: el vendedor escribe un concepto (opcional) y el importe, y la línea se agrega a la venta en curso en dos toques. No hay botones predefinidos.
+- Q: ¿La venta rápida controla stock? → A: No. No descuenta inventario ni tiene costo conocido; cuenta en la caja, en las ventas por canal y en los informes como venta sin costo.
+
+### Session 2026-11-04
+
+- Q: ¿Cuándo se descarta una venta en curso que no se confirmó? → A: Al cerrar la caja. Se conserva si el vendedor recarga o cierra sesión. Al volver a entrar con una venta guardada, se avisa «Retomaste una venta en curso» y se ofrece vaciarla.
+- Q: ¿La caja se cierra sola a las 24 horas? → A: No. El cierre sigue siendo manual, porque exige declarar el efectivo contado. Si la caja se abrió un día anterior (hora de Buenos Aires), se avisa y no se aceptan ventas nuevas hasta cerrarla y abrir otra.
+- Q: ¿El punto de venta muestra productos sin stock? → A: Sí, al final del listado y marcados «Sin stock», sin opción de agregarlos.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Registrar una venta en el local (Priority: P1)
 
-Como vendedor, quiero buscar los productos disponibles en el local, armar la venta con talle, color y cantidad, pedir el DNI del cliente, elegir el medio de pago y confirmarla, para entregar la mercadería y un comprobante en el momento.
+Como vendedor, quiero buscar los productos disponibles en el local, armar la venta con talle, color y cantidad, sumar artículos no cargados con una venta rápida, registrar opcionalmente el nombre y el teléfono del cliente, elegir el medio de pago y confirmarla, para entregar la mercadería y un comprobante en el momento.
 
 **Why this priority**: Es el objetivo central de la feature: vender en el local con el mismo stock que la tienda web.
 
-**Independent Test**: Con una caja abierta, el vendedor arma una venta de dos variantes, ingresa un DNI válido, elige «efectivo» y confirma. Se verifica que el stock físico baja en las cantidades vendidas, que la venta queda registrada con canal local, caja, DNI y medio de pago, y que se muestra un comprobante numerado.
+**Independent Test**: Con una caja abierta, el vendedor arma una venta de dos variantes y una venta rápida de $3.000, elige «efectivo» y confirma sin datos del cliente. Se verifica que el stock físico baja solo en las variantes vendidas, que la venta queda registrada con canal local, caja y medio de pago, y que se muestra un comprobante numerado con las tres líneas.
 
 **Acceptance Scenarios**:
 
 1. **Given** un producto activo disponible en el local y no publicado en la web, **When** el vendedor lo busca, **Then** aparece con sus variantes y el stock disponible de cada una.
 2. **Given** un producto publicado solo en la web, **When** el vendedor lo busca, **Then** no aparece en el punto de venta.
-3. **Given** una venta en curso con ítems válidos, DNI válido y medio de pago elegido, **When** el vendedor confirma, **Then** se registra la venta como pagada y entregada, el stock físico baja una sola vez y se muestra el comprobante.
+3. **Given** una venta en curso con ítems válidos y medio de pago elegido, con o sin nombre y teléfono del cliente, **When** el vendedor confirma, **Then** se registra la venta como pagada y entregada, el stock físico baja una sola vez y se muestra el comprobante.
 4. **Given** una variante con 1 unidad disponible y otra reservada por una orden web vigente, **When** el vendedor intenta vender 2, **Then** se rechaza indicando la cantidad disponible.
 5. **Given** que el vendedor confirma dos veces la misma venta (doble clic o reintento), **When** se procesan ambas solicitudes, **Then** existe una sola venta y ambas respuestas muestran el mismo comprobante.
 6. **Given** que el precio de un producto cambió mientras se armaba la venta, **When** el vendedor confirma, **Then** se informa el precio vigente y se pide confirmar de nuevo con ese importe.
-7. **Given** una venta sin DNI o con un DNI inválido, **When** el vendedor confirma, **Then** se rechaza y se indica el campo a corregir.
+7. **Given** un teléfono con formato inválido o un nombre demasiado largo, **When** el vendedor confirma, **Then** se rechaza y se indica el campo a corregir. Sin nombre ni teléfono, la venta se confirma.
+8. **Given** una venta en curso, **When** el vendedor abre la venta rápida, escribe un importe y la agrega, **Then** se suma una línea con ese concepto (o «Venta rápida» si no escribió uno) e importe, sin descontar stock.
+9. **Given** una venta rápida con importe cero, negativo, con más de dos decimales o no numérico, **When** el vendedor la agrega, **Then** se rechaza.
 
 ---
 
@@ -88,7 +102,7 @@ Como administrador, quiero ver las ventas separadas por canal (web o local) y po
 **Acceptance Scenarios**:
 
 1. **Given** ventas web y locales en un período, **When** el administrador consulta ese período, **Then** ve el total y la cantidad de ventas por canal y, dentro de cada canal, por medio de pago.
-2. **Given** el listado de ventas, **When** el administrador filtra por canal local y un medio de pago, **Then** ve solo esas ventas, con número de comprobante, fecha, DNI, medio y total.
+2. **Given** el listado de ventas, **When** el administrador filtra por canal local y un medio de pago, **Then** ve solo esas ventas, con número de comprobante, fecha, nombre del cliente si se cargó, medio y total.
 3. **Given** los informes existentes de ventas, costo y margen, **When** se consultan, **Then** permiten distinguir lo vendido en la web de lo vendido en el local.
 4. **Given** el historial de cajas, **When** el administrador lo consulta, **Then** ve cada caja con su apertura, cierre, totales por medio, efectivo esperado, efectivo declarado y diferencia.
 
@@ -100,12 +114,12 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 
 **Why this priority**: Mejora la atención, pero la venta funciona sin esta consulta.
 
-**Independent Test**: Tras registrar tres ventas, el vendedor abre su historial, encuentra una por número de comprobante o DNI y reimprime el comprobante con los mismos datos.
+**Independent Test**: Tras registrar tres ventas, el vendedor abre su historial, encuentra una por número de comprobante, nombre o teléfono y reimprime el comprobante con los mismos datos.
 
 **Acceptance Scenarios**:
 
 1. **Given** ventas registradas en el local, **When** el vendedor consulta el historial, **Then** ve las ventas del canal local, de la más reciente a la más antigua, y no ve las ventas web.
-2. **Given** una venta del local, **When** pide el comprobante, **Then** obtiene el mismo número, ítems, importes, medio y DNI que al confirmar.
+2. **Given** una venta del local, **When** pide el comprobante, **Then** obtiene el mismo número, ítems, importes, medio y datos del cliente que al confirmar.
 
 ---
 
@@ -123,6 +137,8 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 - La venta en curso queda vacía: no se puede confirmar.
 - Una devolución de una venta del local cuya caja ya cerró: el arqueo cerrado no se modifica; el reintegro se registra con su propia fecha.
 - Una venta incluye un producto improvisado heredado: el punto de venta no lo admite.
+- Una venta formada solo por líneas de venta rápida: se confirma sin tocar el inventario, aun con el inventario suspendido por un corte.
+- Una línea de venta rápida en una devolución: no tiene unidades de inventario que reingresar; su devolución queda fuera de alcance en esta fase.
 
 ## Requirements *(mandatory)*
 
@@ -139,26 +155,27 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 
 - **FR-005**: Cada producto DEBE tener una disponibilidad para el local independiente de su publicación web, de modo que pueda venderse en ambos canales, solo en la web, solo en el local o en ninguno.
 - **FR-006**: Los productos existentes al habilitar la feature DEBEN quedar disponibles en el local y conservar sin cambios su publicación web.
-- **FR-007**: El punto de venta DEBE ofrecer solo productos activos y disponibles en el local, incluidos los no publicados en la web, y solo variantes activas con stock disponible.
+- **FR-007**: El punto de venta DEBE ofrecer solo productos activos y disponibles en el local, incluidos los no publicados en la web, y solo variantes activas con stock disponible. Los productos sin variantes vendibles DEBEN mostrarse al final, marcados «Sin stock», sin opción de agregarlos.
 - **FR-008**: La tienda web DEBE seguir aplicando su regla actual de publicación. Un producto solo local NO DEBE mostrarse ni comprarse en la web.
 - **FR-009**: El administrador DEBE poder marcar y filtrar los productos por disponibilidad en el local desde la gestión de productos.
 
 **Venta en el local**
 
-- **FR-010**: El vendedor DEBE poder buscar productos por nombre o identificador, elegir variante y cantidad, y modificar o quitar ítems de la venta en curso. La venta en curso DEBE conservarse si se recarga la pantalla.
+- **FR-010**: El vendedor DEBE poder buscar productos por nombre o identificador, elegir variante y cantidad, y modificar o quitar ítems de la venta en curso. La venta en curso DEBE conservarse si se recarga la pantalla o se cierra la sesión, y DEBE descartarse al cerrar la caja. Si al entrar hay una venta guardada, DEBE avisarse y ofrecerse vaciarla.
 - **FR-011**: El stock es único para ambos canales. Una venta en el local NO DEBE superar el stock disponible, que ya descuenta las reservas web vigentes, y DEBE resolver la concurrencia con la web sin vender de más.
-- **FR-012**: El importe de cada ítem DEBE ser el precio vigente del producto, calculado por el sistema. No se admiten descuentos ni precios ingresados por el vendedor. Si el precio cambió desde que se armó la venta, DEBE mostrarse el importe vigente y pedirse una nueva confirmación.
-- **FR-013**: Cada venta DEBE registrar el DNI del cliente, que es obligatorio, se guarda solo con dígitos y tiene 7 u 8 dígitos. No se exigen otros datos del cliente.
+- **FR-012**: El importe de cada ítem de catálogo DEBE ser el precio vigente del producto, calculado por el sistema. No se admiten descuentos ni precios ingresados por el vendedor sobre productos del catálogo. Si el precio cambió desde que se armó la venta, DEBE mostrarse el importe vigente y pedirse una nueva confirmación. La única excepción es la venta rápida (FR-031).
+- **FR-013**: Cada venta PUEDE registrar el nombre y el teléfono del cliente, ambos opcionales. El nombre se guarda sin espacios sobrantes y admite hasta 100 caracteres. El teléfono se guarda solo con dígitos y un `+` inicial opcional, con entre 6 y 20 dígitos. El sistema NO DEBE pedir ni guardar el DNI.
+- **FR-031**: El vendedor DEBE poder agregar a la venta en curso una línea de venta rápida, con un concepto opcional (hasta 80 caracteres; si falta, «Venta rápida») y un importe unitario mayor que cero con hasta dos decimales, en dos toques: abrir la venta rápida y agregar. La línea admite cantidad, se puede modificar o quitar como cualquier otra, no descuenta stock y no tiene costo conocido. El servidor valida el importe y lo conserva tal como se ingresó en el comprobante, la caja y los informes.
 - **FR-014**: Cada venta DEBE tener exactamente un medio de pago: efectivo, transferencia, tarjeta de débito o tarjeta de crédito. El sistema registra el medio elegido sin procesar el cobro.
-- **FR-015**: Al confirmar, en una sola operación indivisible, el sistema DEBE registrar la venta como pagada y entregada con canal local, caja, DNI y medio de pago; descontar el stock físico una sola vez; y fijar el costo de las unidades según el método FIFO vigente. Si algo falla, no DEBE quedar ningún efecto parcial.
+- **FR-015**: Al confirmar, en una sola operación indivisible, el sistema DEBE registrar la venta como pagada y entregada con canal local, caja, medio de pago y los datos opcionales del cliente; descontar el stock físico de los ítems de catálogo una sola vez; y fijar el costo de las unidades según el método FIFO vigente. Si algo falla, no DEBE quedar ningún efecto parcial.
 - **FR-016**: Repetir la confirmación de la misma venta DEBE devolver la venta ya registrada sin duplicarla.
-- **FR-017**: La confirmación DEBE rechazarse indicando cada ítem y su motivo cuando haya: venta vacía, cantidades inválidas, producto inactivo o no disponible en el local, variante inactiva, stock insuficiente, producto improvisado, inventario suspendido, caja no abierta, DNI inválido o medio de pago ausente.
-- **FR-018**: Cada venta confirmada DEBE generar un comprobante interno con numeración correlativa propia. El comprobante incluye número, fecha y hora, DNI, ítems (producto, talle, color, cantidad, precio unitario e importe), total y medio de pago. DEBE poder imprimirse y reimprimirse con los mismos datos, e indicar que no es un comprobante fiscal.
+- **FR-017**: La confirmación DEBE rechazarse indicando cada ítem y su motivo cuando haya: venta vacía, cantidades inválidas, producto inactivo o no disponible en el local, variante inactiva, stock insuficiente, producto improvisado, inventario suspendido (si la venta tiene ítems de catálogo), caja no abierta, nombre o teléfono inválidos o medio de pago ausente.
+- **FR-018**: Cada venta confirmada DEBE generar un comprobante interno con numeración correlativa propia. El comprobante incluye número, fecha y hora, nombre y teléfono del cliente si se cargaron, ítems (producto o concepto, talle y color si corresponden, cantidad, precio unitario e importe), total y medio de pago. DEBE poder imprimirse y reimprimirse con los mismos datos, e indicar que no es un comprobante fiscal.
 - **FR-019**: El vendedor NO DEBE poder anular ni modificar una venta confirmada. Solo el administrador puede gestionar su devolución con motivo, mediante el flujo de devoluciones existente.
 
 **Caja diaria**
 
-- **FR-020**: Para confirmar una venta en el local DEBE existir una caja abierta. Hay una única caja del local y solo puede estar abierta una a la vez; abrir otra mientras sigue abierta DEBE rechazarse. El vendedor es el responsable de abrirla y cerrarla. Al abrirla se registra el efectivo inicial (cero o mayor) y la fecha y hora.
+- **FR-020**: Para confirmar una venta en el local DEBE existir una caja abierta. Hay una única caja del local y solo puede estar abierta una a la vez; abrir otra mientras sigue abierta DEBE rechazarse. El vendedor es el responsable de abrirla y cerrarla. Al abrirla se registra el efectivo inicial (cero o mayor) y la fecha y hora. El cierre es manual. Una caja abierta un día anterior (hora de Buenos Aires) NO DEBE admitir ventas nuevas: el sistema avisa al vendedor y al administrador que hay que cerrarla y abrir otra.
 - **FR-021**: Cada venta en el local DEBE quedar asociada a la caja abierta en el momento de confirmarla.
 - **FR-022**: El resumen de cierre DEBE mostrar la cantidad de ventas, el total por medio de pago, el total general y el efectivo esperado (efectivo inicial más ventas en efectivo).
 - **FR-023**: Al cerrar, el vendedor DEBE declarar el efectivo contado. El sistema registra el importe declarado, la diferencia con el esperado, una observación opcional y la fecha y hora. Una caja cerrada no admite ventas, cambios ni reapertura.
@@ -177,7 +194,8 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 
 - **Vendedor**: única cuenta activa con rol vendedor, que puede darse de baja lógicamente. Registra ventas y es responsable de abrir y cerrar la caja.
 - **Disponibilidad por canal**: atributo de cada producto que indica si se vende en el local, independiente de su publicación web.
-- **Venta en el local**: venta del canal local, pagada y entregada al confirmarse. Tiene caja, DNI, medio de pago, líneas con instantánea del producto, precio e importe, total y comprobante. Comparte con las órdenes web el stock, el costo FIFO, las devoluciones y los informes.
+- **Venta en el local**: venta del canal local, pagada y entregada al confirmarse. Tiene caja, medio de pago, nombre y teléfono opcionales del cliente, líneas con instantánea del producto (o concepto de venta rápida), precio e importe, total y comprobante.
+- **Línea de venta rápida**: línea sin producto ni variante, con concepto e importe ingresados por el vendedor. No mueve stock ni tiene costo. Comparte con las órdenes web el stock, el costo FIFO, las devoluciones y los informes.
 - **Comprobante interno**: número correlativo e imprimible asociado a una venta del local. No tiene validez fiscal.
 - **Caja**: período de operación de la única caja del local, con apertura (fecha y efectivo inicial), ventas asociadas y cierre (fecha, efectivo esperado, efectivo declarado, diferencia y observación). Su estado es abierta o cerrada.
 - **Medio de pago**: efectivo, transferencia, débito o crédito en el local. En la web corresponde al que defina el flujo de pago vigente.
@@ -186,7 +204,7 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 
 ### Measurable Outcomes
 
-- **SC-001**: Un vendedor completa una venta de tres ítems, incluidos el DNI y el medio de pago, en menos de 90 segundos desde que empieza la búsqueda.
+- **SC-001**: Un vendedor completa una venta de tres ítems, incluido el medio de pago, en menos de 90 segundos desde que empieza la búsqueda. Agregar una venta rápida lleva dos toques más el importe.
 - **SC-002**: En pruebas de concurrencia entre la web y el local sobre la última unidad disponible, nunca se vende más que el stock disponible (0 casos de sobreventa).
 - **SC-003**: Las confirmaciones repetidas de una misma venta producen exactamente una venta y un comprobante en el 100 % de los casos.
 - **SC-004**: Para cualquier período, los totales por canal y por medio de pago suman exactamente el total de ventas del período, al centavo.
@@ -198,7 +216,7 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 
 - Hay un único local físico, una única caja y un único vendedor. Varias sucursales, varias cajas, varios vendedores y los informes por vendedor quedan fuera de alcance.
 - El comprobante es interno. La facturación electrónica (AFIP/ARCA) queda fuera de alcance.
-- El DNI no se vincula con cuentas de clientes web ni se envía por correo. El comprobante no se envía por email en esta fase.
+- El nombre y el teléfono del cliente no se vinculan con cuentas de clientes web ni se usan para contacto o marketing. El comprobante no se envía por email en esta fase.
 - Los cobros con tarjeta o transferencia se hacen fuera del sistema (posnet, home banking) y el vendedor solo registra el medio. La integración con la pasarela de pagos de la feature 006 queda fuera de alcance. Si la 006 define medios para la web, el listado por medio los usa.
 - Los pagos mixtos (dos medios en una venta), los descuentos, las devoluciones hechas por el vendedor, el lector de código de barras y los retiros o ingresos de efectivo durante la caja quedan fuera de alcance.
 - El punto de venta se usa en un navegador de escritorio o tablet con conexión. No hay modo sin conexión.
@@ -214,6 +232,6 @@ Como vendedor, quiero ver las ventas del local de la caja actual y de días ante
 
 Lista preliminar; el plan la actualiza.
 
-- **backend/**: `prisma/schema.prisma` y una migración nueva (disponibilidad local, canal, DNI, medio de pago, caja y numeración de comprobantes); `src/middleware/` (nuevo `es-vendedor.js`); `src/utils/visibilidad-producto.js`; `src/services/` (servicio nuevo de venta local y caja; extracción de la lógica común de `checkout.js`; `informes.js`; `ordenes.js`); `src/routes/` (rutas nuevas del punto de venta y la caja; `productos.routes.js`, `usuarios.routes.js`, `admin-ordenes.routes.js`, `admin-informes.routes.js`); `src/index.js`; `test/` (pruebas nuevas de venta local, caja y concurrencia).
+- **backend/**: `prisma/schema.prisma` y dos migraciones nuevas (disponibilidad local, canal, medio de pago, caja y numeración de comprobantes; luego venta rápida y datos opcionales del cliente en lugar del DNI); `src/middleware/` (nuevo `es-vendedor.js`); `src/utils/visibilidad-producto.js`; `src/services/` (servicio nuevo de venta local y caja; extracción de la lógica común de `checkout.js`; `informes.js`; `ordenes.js`); `src/routes/` (rutas nuevas del punto de venta y la caja; `productos.routes.js`, `usuarios.routes.js`, `admin-ordenes.routes.js`, `admin-informes.routes.js`); `src/index.js`; `test/` (pruebas nuevas de venta local, caja y concurrencia).
 - **frontend/**: `src/app/vendedor/` (punto de venta, caja e historial); `src/app/api/vendedor/` (BFF); `src/lib/autorizacion.ts`, `src/lib/api.ts`; `src/components/` (componentes nuevos del punto de venta y la caja; `AdminProductos.tsx`, `AdminClientes.tsx`, `AdminOrdenes.tsx`, `AdminInformes.tsx`, `Header.tsx`, `AuthForm.tsx`); `src/types/` (tipos de venta local, caja y comprobante).
 - **PandoSDD/**: `specs/007-vendedor-venta-local/` y `docs/estado-actual/` (modelo de datos, API, frontend, autorización y flujos de negocio).
