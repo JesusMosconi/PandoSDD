@@ -20,7 +20,7 @@ Formularios de suscripción: `NewsletterForm` (inicio, nosotros y categorías) y
 | `/productos/[id]` | Detalle y variantes | `productos/[id]/page.tsx` |
 | `/nosotros` | Contenido e imágenes institucionales | `nosotros/page.tsx` |
 | `/login`, `/cuenta`, `/carrito`, `/checkout` | Autenticación, perfil, carrito y revisión de compra | `login/page.tsx`, `cuenta/page.tsx`, `carrito/page.tsx`, `checkout/page.tsx` |
-| `/admin`, `/admin/productos`, `/admin/imagenes`, `/admin/clientes`, `/admin/ordenes`, `/admin/catalogo-inicio` | Panel y gestión | `admin/page.tsx`, `admin/productos/page.tsx`, `admin/imagenes/page.tsx`, `admin/clientes/page.tsx`, `admin/ordenes/page.tsx`, `admin/catalogo-inicio/page.tsx` |
+| `/admin`, `/admin/productos`, `/admin/productos/[id]`, `/admin/ranking`, `/admin/imagenes`, `/admin/clientes`, `/admin/ordenes`, `/admin/catalogo-inicio` | Panel y gestión | `admin/page.tsx`, `admin/productos/page.tsx`, `admin/productos/[id]/page.tsx`, `admin/ranking/page.tsx`, `admin/imagenes/page.tsx`, `admin/clientes/page.tsx`, `admin/ordenes/page.tsx`, `admin/catalogo-inicio/page.tsx` |
 
 Las rutas Next de API son `POST /api/auth/[modo]` (`login` o `registro`), `POST /api/auth/logout`, las rutas de carrito, perfil y contraseña, `POST /api/checkout/resumen`, `POST /api/checkout/confirmacion`, GET `/api/ordenes` y `/api/ordenes/[id]`, POST `/api/ordenes/[id]/cancelacion` y el proxy `GET/POST/PUT/PATCH/DELETE /api/admin/[...ruta]`. Fuentes: `frontend/src/app/api/auth/`, `frontend/src/app/api/carrito/`, `frontend/src/app/api/usuarios/`, `frontend/src/app/api/checkout/`, `frontend/src/app/api/ordenes/`, `frontend/src/app/api/admin/[...ruta]/route.ts`.
 
@@ -59,3 +59,28 @@ La sección de informes de `/admin/compras` consulta período principal y compar
 El BFF `/api/vendedor/[...ruta]` valida la sesión con rol `vendedor` o `admin` y reenvía a Express con Bearer y `no-store`. `exigirVendedor()` protege `/vendedor` (punto de venta: buscador, variantes con stock, venta en curso, venta rápida (abrir, escribir el importe y agregar), nombre y teléfono opcionales, medio, total y confirmación con reintento ante `RESUMEN_CAMBIO`), `/vendedor/caja` (apertura, resumen y cierre con arqueo), `/vendedor/ventas` (historial con búsqueda por comprobante, nombre o teléfono) y `/vendedor/ventas/[id]` (comprobante interno imprimible). El login redirige al vendedor a `/vendedor` y el Header muestra «Punto de venta» y oculta el carrito al vendedor.
 
 En administración, Clientes ofrece el rol «Vendedor» y muestra `VENDEDOR_EXISTENTE`; Productos suma el checkbox, el filtro y la columna «Local». `/admin/ventas` muestra el resumen del período por canal y medio, el listado filtrable y el historial de cajas con cierre de respaldo. Órdenes suma los filtros de canal y medio y muestra comprobante, nombre y teléfono en las órdenes locales y oculta las líneas de venta rápida del selector de devoluciones, sin datos del operador. Informes suma el filtro por canal. El BFF admin agrega los prefijos `ventas` y `cajas`. `tsc`, lint (0 errores) y build pasaron; el recorrido visual está pendiente. Fuentes: `frontend/src/app/vendedor/`, `frontend/src/app/admin/ventas/page.tsx`, `frontend/src/components/PuntoVenta.tsx`, `frontend/src/components/CajaPanel.tsx`, `frontend/src/components/AdminVentas.tsx`, `frontend/src/app/api/vendedor/[...ruta]/route.ts`.
+
+En la 008, `/admin` muestra primero el resumen de ventas: total, ventas y ticket con variación, el detalle web/local, el gráfico diario por canal y los más vendidos, con selector de período (hoy, 7 días, 30 días o mes actual). Debajo quedan los módulos, con «Ranking» agregado. `/admin/ranking` filtra por fechas, canal, categoría, orden (cantidad o importe) y mínimos; muestra el top 10 en barras y la tabla paginada, y conserva los filtros en la URL. `/admin/productos/[id]` muestra la trazabilidad: totales, posición, precio publicado frente al promedio cobrado, unidades por día, desglose por canal y variante, historial de precios y, debajo, el informe existente de costo y margen. Productos y el ranking enlazan a esa página con «Estadísticas». Los gráficos usan Recharts (dependencia nueva) con una paleta validada de dos series y una vista de tabla para cada uno. El BFF admin agrega el prefijo `estadisticas`. Lint (0 errores) y build pasaron. Fuentes: `frontend/src/app/admin/page.tsx`, `frontend/src/app/admin/ranking/page.tsx`, `frontend/src/app/admin/productos/[id]/page.tsx`, `frontend/src/components/AdminInicio.tsx`, `frontend/src/components/AdminRanking.tsx`, `frontend/src/components/AdminTrazabilidadProducto.tsx`, `frontend/src/components/GraficosEstadisticas.tsx`, `frontend/src/lib/estadisticas.ts`.
+
+También en la 008, `admin/layout.tsx` envuelve todas las páginas de `/admin` con un menú lateral (`AdminSidebar`). Muestra Inicio, los módulos agrupados en Ventas, Catálogo, Inventario y Usuarios, y el acceso al punto de venta, y resalta la opción activa, incluidas las subrutas. En pantallas angostas se pliega detrás de «Menú del panel». La lista de módulos vive en `frontend/src/lib/admin-modulos.ts`. El layout valida el rol con `exigirAdministrador()`, y cada página lo sigue haciendo.
+
+El Inicio (`/admin`) se rediseñó en la 008. Saluda con la fecha y muestra primero «Para atender» (`AdminPendientes`), que no depende del período:
+- tarjetas con incidencias de pago, pagos por confirmar, órdenes por preparar, en preparación, esperando retiro y en camino, reintegros pendientes y compras en borrador. Cada tarjeta enlaza a su pantalla (Órdenes acepta `?estado=`) y muestra «Al día» si no hay nada;
+- el estado de la caja, con aviso si quedó abierta de otra jornada;
+- el stock crítico.
+
+Se refresca cada 60 segundos o con «Actualizar». Debajo está «Ventas», con selector de período:
+- total, ventas, ticket y unidades, con su variación;
+- barras apiladas por día y canal;
+- el reparto por canal y las devoluciones;
+- los 5 más vendidos.
+
+Ya no hay tarjetas de módulos. `ContenedorPrincipal` quita el ancho máximo de la tienda en `/admin`, así el menú queda pegado a la izquierda.
+
+`/admin/ordenes` se reorganizó para que sea más clara:
+- La lista muestra el estado con nombre y color, el tipo de entrega, el medio de pago y el total. Hay atajos por estado (Pago pendiente, Por preparar, En preparación, Esperan retiro, En camino).
+- Los filtros se aplican al cambiarlos y se pueden limpiar.
+- «Ver y gestionar» despliega el detalle debajo de esa misma orden, desplaza la vista hasta él y le pasa el foco. Un segundo clic lo oculta.
+- El detalle empieza por «Próximo paso», con la acción principal (confirmar pago o avanzar el estado, con confirmación). Siguen Cliente y Entrega, Productos y totales, y después costo y margen, devoluciones e historial, plegables. La cancelación queda plegada y marcada en rojo.
+
+En `/cuenta`, los campos de contraseña actual y nueva tienen el botón del ojo para mostrarla u ocultarla, como en el login. Fuentes: `frontend/src/components/AdminOrdenes.tsx`, `frontend/src/components/CuentaPanel.tsx`.

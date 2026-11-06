@@ -67,6 +67,13 @@ Al crear `ItemCarrito`, la ruta copia `Producto.precio` a `precioUnitario`; si e
 - **Baja de la columna `dniCliente`.** La migración `20261102_venta_rapida_cliente_opcional` elimina la columna y sus datos. Se aprobó porque solo existía en `Prueba`; si alguna base ya tuviera ventas reales con DNI, hay que respaldarla antes de aplicar. Fuente: `backend/prisma/migrations/20261102_venta_rapida_cliente_opcional/migration.sql`.
 - **Tests con estado global.** Los tests de caja y venta local se omiten si la base de prueba tiene una caja abierta ajena; los de roles, si hay un vendedor activo ajeno. El de inventario suspendido requiere `PANDO_TEST_SPECIAL=1` porque modifica el estado global del corte. Fuentes: `backend/test/soporte/venta-local.js`, `backend/test/venta-local.test.js`.
 
+## Estadísticas del administrador 008
+
+- **Sin historial de precios previo.** Las vigencias empiezan con la migración `20261019_vigencias_precio`. Antes de esa fecha la trazabilidad no muestra precio publicado, y los precios promocionales todavía no se registran. Fuente: `backend/src/services/precios.js`.
+- **Netos negativos posibles.** Las devoluciones restan en la fecha en que se aceptan, igual que en los informes. Una devolución de una venta de otro período puede dejar un producto con unidades netas negativas en el ranking. Fuente: `backend/src/services/estadisticas.js`.
+- **Dependencia nueva.** El frontend agrega `recharts`. `npm install` informó vulnerabilidades preexistentes de auditoría que no se corrigieron con `npm audit fix --force`. Fuente: `frontend/package.json`.
+- **Verificación con base pendiente.** Los tests de base de `backend/test/estadisticas.test.js` se omiten si no está configurada la base descartable (`PANDO_TEST_BRANCH_ID`). Las consultas SQL de agregación todavía no se ejecutaron contra una base. Fuente: `specs/008-ranking-estadisticas-admin/verificacion.md`.
+
 ## Funcionalidad pendiente
 
 Checkout 002 agrega rutas y pantallas para crear y gestionar `Orden` y `DatosEnvio`; se verificaron localmente contra `Prueba`, incluida la medición de SC-006. Falta activar y verificar el barrido en producción. `Venta`, `Favorito` y `ActividadAdmin` no tienen rutas/pantallas dedicadas en esta entrega. `ProductoImprovisado` no participa de checkout web. Fuentes: `backend/prisma/schema.prisma`, `backend/src/index.js`, `frontend/src/app/`, `specs/002-checkout-ordenes/verificacion.md`.
