@@ -18,7 +18,7 @@ El backend calculará cobertura, tarifa y total antes de crear la orden y los gu
 
 **Testing**: Backend `npm.cmd test` contra base aislada; frontend `npm.cmd run lint` y `npm.cmd run build`; compras de prueba en Mercado Pago.
 
-**Target Platform**: Entorno aislado de demostración con backend y frontend accesibles por HTTPS; sin conectar credenciales ni datos de producción.
+**Target Platform**: Demostración con backend y frontend accesibles por HTTPS; la base puede ser la rama Neon aislada o `production`, con credenciales de prueba de Mercado Pago y destino exacto verificado. En la rama productiva, las órdenes de prueba afectan las reservas e inventario compartidos y deben identificarse como demostración.
 
 **Project Type**: Tres repositorios: raíz docs/specs, backend API, frontend web/BFF.
 
@@ -112,7 +112,7 @@ root/docs/estado-actual/{02-modelo-de-datos,06-flujos-de-negocio,08-deuda-y-ries
 
 ## Alcance obligatorio de tesis
 
-Todos los estados de venta, salida, devolución y reintegro descritos representan operaciones simuladas en una base aislada. Se permite ensayar `enviada` sin efectuar un despacho físico. Se suprimen efectos externos de correo para las órdenes de demostración; la deduplicación de eventos se verifica con un transporte simulado. No se contratan servicios ni planes pagos: demostración local y recursos gratuitos existentes; si un recurso exige pago, se usa ejecución local equivalente y se documenta la limitación.
+Todos los estados de venta, salida, devolución y reintegro descritos representan operaciones simuladas. En la rama Neon `production` esas órdenes comparten inventario con las demás; antes de habilitar la bandera hay que comprobar el destino y usar datos ficticios. Se permite ensayar `enviada` sin efectuar un despacho físico. Se suprimen efectos externos de correo para las órdenes de demostración; la deduplicación de eventos se verifica con un transporte simulado. No se contratan servicios ni planes pagos: demostración local y recursos gratuitos existentes; si un recurso exige pago, se usa ejecución local equivalente y se documenta la limitación.
 
 Las credenciales de prueba se verifican mediante el procedimiento oficial vigente y la identidad de la aplicación/cuenta de prueba. No se deduce su entorno por el prefijo del token. Ante imposibilidad de acreditar el entorno, el pago queda bloqueado. Las respuestas del proveedor deben identificarse como prueba antes de aplicar sus resultados.
 
