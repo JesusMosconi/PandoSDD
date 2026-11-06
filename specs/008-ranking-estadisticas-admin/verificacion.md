@@ -27,4 +27,24 @@
 - Paleta de los gráficos (`#2a78d6`, `#eb6834`) validada en modo claro: separación para daltonismo ΔE 24,7, visión normal ΔE 33,6 y contraste ≥ 3:1.
 - Menú lateral (US4): `tsc`, lint (0 errores) y build correctos.
 - Rediseño del Inicio (T015): `tsc`, lint (0 errores) y build correctos. Backend: `test/estadisticas.test.js` 8/8 contra `ep-fancy-queen-acudbg1e`, con el test nuevo de pendientes.
-- **Pendiente**: el recorrido visual de [quickstart.md](quickstart.md) con backend y base de prueba.
+
+## Recorrido visual (2026-11-06)
+
+Se hizo con Chrome automatizado (puppeteer-core, fuera del repo), con backend y frontend locales contra `ep-fancy-queen-acudbg1e`. Se usó un admin temporal (`recorrido-008@example.invalid`) que al final quedó desactivado, sin rol admin y con una contraseña inválida. No se pudo borrar por registros relacionados. Las capturas no se versionan.
+
+- **Sin sesión**: `/admin/ranking` redirige a `/login`.
+- **Escritorio (1440 × 900)**:
+  - El Inicio aparece a ancho completo, con el menú lateral, «Para atender» (tarjetas con contador y «Al día», caja y stock crítico) y las ventas: indicadores, barras apiladas, reparto por canal, devoluciones y más vendidos. El período «7 días» recarga los datos.
+  - Ranking: filtros, top en barras y tabla con «Estadísticas».
+  - Trazabilidad: totales, gráficos, canal, variante, historial de precios e informe de costo.
+  - Órdenes: atajos, estados con nombre y color, total en cada fila. «Ver y gestionar» despliega el detalle bajo la fila y desplaza la vista hasta ella. `?estado=pago_confirmado` aplica el filtro y muestra el estado vacío con «Ver todas».
+  - Cuenta: el ojo cambia el campo a texto.
+- **Celular (390 × 844)**: el menú plegable abre y cierra. Inicio, Órdenes, Ranking, Trazabilidad, Ventas, Productos y Compras no se desbordan horizontalmente: las tablas anchas se desplazan dentro de su contenedor.
+- **Consola**: 0 errores de página.
+
+Correcciones hechas durante el recorrido:
+1. **Gráfico de precios**: el eje Y repetía «$10 k» con un precio estable. Ahora el eje arranca en 0, y el promedio cobrado se muestra como puntos que no tapan el precio publicado.
+2. **Abreviatura de importes**: Intl mezclaba «k» y «K». Ahora `dineroCompacto` es propia: «$7,5 k», «$1,2 M».
+3. **Órdenes**: el desplazamiento iba al detalle y dejaba la fila de la orden bajo el encabezado. Ahora va a la fila.
+4. **Inicio y Trazabilidad en celular**: había desborde horizontal porque las grillas no tenían columnas definidas y las tablas o nombres largos las estiraban. Se agregó `grid-cols-1` y `min-w-0`.
+5. **Inicio en celular**: las tarjetas de pendientes van de a dos por fila, y las que están en cero se compactan.
